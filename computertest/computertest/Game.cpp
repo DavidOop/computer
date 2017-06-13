@@ -99,8 +99,8 @@ bool Game::updateMove(float speed)
 	bool temp = true;
 	static unsigned num = 10;
 	static char selected;
-	//move(speed);
-	if (num >= 10) {
+	move(speed);
+	/*if (num >= 10) {
 		selected = move(speed);
 		num = 0;
 	}
@@ -122,7 +122,7 @@ bool Game::updateMove(float speed)
 		default:
 			break;
 		}
-	}
+	}*/
 	//std::cout << m_me->getCenter().x << " " << m_me->getCenter().y << '\n';
 	num++;
 	std::vector<Uint32> deleted;
@@ -171,12 +171,13 @@ bool Game::updateMove(float speed)
 char Game::move(float speed) {
 
 	speed *= MOVE;
-	const float RADIUS_CHECK = 100;
+	const float RADIUS_CHECK = 500;
 	float max = -1, tempR;
 	auto x = m_me->getCenter().x;
 	auto y = m_me->getCenter().y;
 	char d;
 	sf::Vector2f temp, moveTo;
+	std::cout << "r: ";
 	temp = sf::Vector2f{ x + speed, y };//right
 	if (temp.x + m_me->getRadius()  < BOARD_SIZE.x) {
 		tempR = direction(pair({ temp.x, temp.y - RADIUS_CHECK }, { temp.x + RADIUS_CHECK, temp.y + RADIUS_CHECK }));// up
@@ -187,6 +188,8 @@ char Game::move(float speed) {
 		//	std::cout << "right: " << tempR << '\n';
 		}
 	}
+	std::cout << "l: ";
+
 	temp = sf::Vector2f{ x - speed, y };//left
 	if (temp.x - m_me->getRadius()  > 0) {
 		tempR = direction(pair({ temp.x - RADIUS_CHECK, temp.y - RADIUS_CHECK }, { temp.x, temp.y+ RADIUS_CHECK }));
@@ -197,6 +200,8 @@ char Game::move(float speed) {
 	//		std::cout << "left: " << tempR << '\n';
 		}
 	}
+	std::cout << "d: ";
+
 	temp = sf::Vector2f{ x , y - speed };
 	if (temp.y - m_me->getRadius() > 0) {
 		tempR = direction(pair({ temp.x - RADIUS_CHECK, temp.y - RADIUS_CHECK }, { temp.x + RADIUS_CHECK, temp.y }));
@@ -208,6 +213,7 @@ char Game::move(float speed) {
 
 		}
 	}
+	std::cout << "u: ";
 	temp = sf::Vector2f{ x , y + speed };
 	if (temp.y + m_me->getRadius()  < BOARD_SIZE.y) {
 		tempR = direction(pair({ temp.x - RADIUS_CHECK , temp.y }, { temp.x + RADIUS_CHECK, temp.y + RADIUS_CHECK }));
@@ -218,16 +224,14 @@ char Game::move(float speed) {
 		}
 	}
 	m_me->setCenter(moveTo);
+	std::cout << '\n';
 	//std::cout << "=========================" << max << '\n';
 	return d;
 }
 //==========================================================================================================
 float Game::direction(const pair& ver) {
-	//if (ver.x < 0 || ver.y < 0 || ver.x > BOARD_SIZE.x || ver.y > BOARD_SIZE.y)
-	//	return -1000;
-
+	
 	auto intersection = m_objectsOnBoard.colliding(ver);
-	//auto myRad = m_data.find(m_id)->second.getRadius();
 	float sum = 0;
 	for (auto it = intersection.begin(); it != intersection.end(); ++it) {
 		if (*it >= 1000 && *it <= 5000)
@@ -236,6 +240,7 @@ float Game::direction(const pair& ver) {
 		sum += FOOD_RADIUS;
 		//	sum = -100000.f;
 	}
+	std::cout << sum << '\n';
 	return sum;
 }
 //====================================================================================
@@ -245,37 +250,40 @@ float Game::direction(const pair& ver) {
 bool Game::receiveChanges(const Images &images)
 {
 	sf::Packet packet;
-	m_socket.receive(packet);
-
-	while (!packet.endOfPacket())
-	{
-		std::pair<Uint32, sf::Vector2f> temp;
-		packet >> temp;
-		std::vector<Uint32> del;
-
-		if (temp.first >= 1000 && temp.first <= 10000) // אוכל או פצצות חדשות
-			m_objectsOnBoard.insert(temp);
-
-		else if (temp.first >= 200 && temp.first <= 300)// שחקן
+	if (m_socket.receive(packet) == sf::TcpSocket::Done) {
+		static int c = 0;
+		while (!packet.endOfPacket())
 		{
-			if (temp.first == m_me->getId())// השחקן שלי
-				continue;
-			if (m_players.find(temp.first) != m_players.end())// תזוזה של שחקן (שחקן קיים..)י
-			{
-				m_players[temp.first]->setPosition(temp.second);
-				m_players[temp.first]->setCenter(m_players[temp.first]->getPosition() + Vector2f{ m_players[temp.first]->getRadius(),m_players[temp.first]->getRadius() });
-				if (!m_players[temp.first]->collision(del, m_objectsOnBoard, m_players, m_me.get()))
-					return false; //אם השחקן הרג אותי
+			std::pair<Uint32, sf::Vector2f> temp;
+			packet >> temp;
+			std::vector<Uint32> del;
+
+			if (temp.first >= 1000 && temp.first <= 10000) { // אוכל או פצצות חדשות
+				m_objectsOnBoard.insert(temp);
+				c++;
 			}
-			else // שחקן חדש
+
+			else if (temp.first >= 200 && temp.first <= 300)// שחקן
 			{
-				Uint32 image;
-				packet >> image;
-				m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[image], NEW_PLAYER, temp.second));
+				if (temp.first == m_me->getId())// השחקן שלי
+					continue;
+				if (m_players.find(temp.first) != m_players.end())// תזוזה של שחקן (שחקן קיים..)י
+				{
+					m_players[temp.first]->setPosition(temp.second);
+					m_players[temp.first]->setCenter(m_players[temp.first]->getPosition() + Vector2f{ m_players[temp.first]->getRadius(),m_players[temp.first]->getRadius() });
+					if (!m_players[temp.first]->collision(del, m_objectsOnBoard, m_players, m_me.get()))
+						return false; //אם השחקן הרג אותי
+				}
+				else // שחקן חדש
+				{
+					Uint32 image;
+					packet >> image;
+					m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[image], NEW_PLAYER, temp.second));
+				}
 			}
 		}
+		std::cout << "food :" << c << '\n';
 	}
-
 	return true;
 }
 
