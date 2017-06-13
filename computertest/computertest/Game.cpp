@@ -11,8 +11,8 @@ Game::Game(const Images &images, Uint32 image_id)
 	:m_me(std::make_unique<MyPlayer>()),
 	m_background(images[int(BACKGROUND)])
 {
-	if (m_socket.connect(sf::IpAddress::LocalHost, 5555) != sf::TcpSocket::Done)
-		//if (m_socket.connect("10.2.15.207", 5555) != sf::TcpSocket::Done)
+	//if (m_socket.connect(sf::IpAddress::LocalHost, 5555) != sf::TcpSocket::Done)
+		if (m_socket.connect("10.2.15.207", 5555) != sf::TcpSocket::Done)
 		std::cout << "no connecting\n";
 
 	sf::Packet packet;
@@ -315,5 +315,6 @@ void Player::checkFoodAndBomb(std::vector<Uint32> &deleted, Maps &objectsOnBoard
 		{
 			newRadius(objectsOnBoard[it].get());
 			objectsOnBoard.eraseFromData(it);
+			deleted.push_back(it);
 		}
 }
