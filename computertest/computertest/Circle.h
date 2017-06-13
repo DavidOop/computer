@@ -25,14 +25,26 @@
 
 class Maps;
 class OtherPlayers;
-typedef std::pair<sf::Vector2f, sf::Vector2f> pair;
-const float FOOD_RADIUS = 10;
-const float BOMB_RADIUS = 30;
-const float NEW_PLAYER = 60;
 
 using sf::Uint32;
 using sf::CircleShape;
 using sf::Vector2f;
+
+typedef std::pair<sf::Vector2f, sf::Vector2f> pair;
+
+const float FOOD_RADIUS = 10;
+const float BOMB_RADIUS = 30;
+const float NEW_PLAYER = 60;
+const unsigned MAX_IMAGE = 100;
+
+const Uint32 PLAYER_LOWER = 200;
+const Uint32 PLAYER_UPPER = 300;
+
+const Uint32 FOOD_LOWER = 1000;
+const Uint32 FOOD_UPPER = 5000;
+
+const Uint32 BOMBS_LOWER = 6000;
+const Uint32 BOMBS_UPPER = 10000;
 
 class Circle :public CircleShape
 {
@@ -62,7 +74,7 @@ public:
 	bool collision(std::vector<Uint32> &deleted, Maps &objectsOnBoard, std::unordered_map<Uint32, std::unique_ptr<OtherPlayers>>& players, Player *me);
 	bool checkPlayers(std::vector<Uint32> &deleted, std::unordered_map<Uint32, std::unique_ptr<OtherPlayers>>& players, Player *me);
 	void checkFoodAndBomb(std::vector<Uint32> &deleted, Maps &objectsOnBoard);
-	bool circlesCollide(const Player* p) const;
+	bool circlesCollide(const Circle* p) const;
 
 	void newRadius(const Circle *c);
 	void move(float x, float y);

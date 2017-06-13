@@ -7,12 +7,13 @@
 //====================================================================================
 //================================ CONSTRUCTOR =======================================
 //====================================================================================
-Game::Game(const Images &images, Uint32 image_id)
+Game::Game(const Images &images, Uint32 image_id, sf::View& view)
 	:m_me(std::make_unique<MyPlayer>()),
-	m_background(images[int(BACKGROUND)])
+	m_background(images[int(BACKGROUND)]),
+	m_view(view)
 {
 	//if (m_socket.connect(sf::IpAddress::LocalHost, 5555) != sf::TcpSocket::Done)
-		if (m_socket.connect("10.2.15.207", 5555) != sf::TcpSocket::Done)
+		if (m_socket.connect("10.2.16.95", 5555) != sf::TcpSocket::Done)
 		std::cout << "no connecting\n";
 
 	sf::Packet packet;
@@ -42,10 +43,10 @@ void Game::receive(const Images &images)
 			//std::cout << "while\n";
 			packet >> temp;
 
-			if (temp.first >= 1000 && temp.first <= 10000)
+			if (temp.first >= FOOD_LOWER && temp.first <= BOMBS_UPPER)
 				m_objectsOnBoard.insert(temp);
 
-			else if (temp.first >= 200 && temp.first <= 300)//???????????????????????
+			else if (temp.first >= PLAYER_LOWER && temp.first <= PLAYER_UPPER)//???????????????????????
 			{
 				packet >> radius >> image;
 				m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[image], radius, temp.second));
@@ -129,11 +130,15 @@ bool Game::updateMove(float speed)
 	std::vector<Uint32> deleted;
 
 	temp = m_me->collision(deleted, m_objectsOnBoard, m_players, m_me.get());
+	if (!temp)
+		deleted.push_back(m_me->getId()); // אם מתתי
+
 	packet << m_me->getId() << m_me->getRadius() << m_me->getPosition() << deleted;
 
 	if (m_socket.send(packet) != sf::TcpSocket::Done)
 		std::cout << "no sending data\n";
-
+	if (!temp)
+		Sleep(200);
 
 	return temp;
 }
@@ -259,12 +264,12 @@ bool Game::receiveChanges(const Images &images)
 			packet >> temp;
 			std::vector<Uint32> del;
 
-			if (temp.first >= 1000 && temp.first <= 10000) { // אוכל או פצצות חדשות
+			if (temp.first >= FOOD_LOWER && temp.first <= BOMBS_UPPER) { // אוכל או פצצות חדשות
 				m_objectsOnBoard.insert(temp);
 				c++;
 			}
 
-			else if (temp.first >= 200 && temp.first <= 300)// שחקן
+			else if (temp.first >= PLAYER_LOWER && temp.first <= PLAYER_UPPER)// שחקן
 			{
 				if (temp.first == m_me->getId())// השחקן שלי
 					continue;
@@ -293,8 +298,8 @@ bool Game::receiveChanges(const Images &images)
 //====================================================================================
 void Game::setView(sf::RenderWindow &w) const
 {
-	sf::View view;
-	view.reset(sf::FloatRect{ 0,0,float(SCREEN_WIDTH),float(SCREEN_HEIGHT) });
+	/*sf::View view;
+	view.reset(sf::FloatRect{ 0,0,float(SCREEN_WIDTH),float(SCREEN_HEIGHT) });*/
 	sf::Vector2f pos{ float(SCREEN_WIDTH) / 2 , float(SCREEN_HEIGHT) / 2 };
 
 	if (m_me->getCenter().x > SCREEN_WIDTH / 2)
@@ -309,8 +314,8 @@ void Game::setView(sf::RenderWindow &w) const
 		else
 			pos.y = m_me->getCenter().y;
 
-	view.setCenter(pos);
-	w.setView(view);
+	m_view.setCenter(pos);
+	w.setView(m_view);
 }
 //--------------------------------------------------------------------------
 void Game::draw(sf::RenderWindow &w) const
@@ -360,10 +365,11 @@ bool Player::checkPlayers(std::vector<Uint32> &deleted, std::unordered_map<Uint3
 				deleted.push_back(player.first);
 			}
 			else
-				temp = (getId() == me->getId()) ? false : true; //אם הנוכחי מת (לא השחקן שלי, השחקן הנבדק)י
+				temp = (dynamic_cast<MyPlayer*>(this)) ? false : true; //אם הנוכחי מת (לא השחקן שלי, השחקן הנבדק)י
 	}
 
-	if (getId() != me->getId()) //בדיקה של שחקן נוכחי מול השחקן שלי
+	//if (getId() != me->getId()) //בדיקה של שחקן נוכחי מול השחקן שלי
+	if (dynamic_cast<OtherPlayers*>(this))
 	{
 		if (circlesCollide(me))
 			if (getRadius() > me->getRadius())
@@ -387,8 +393,7 @@ void Player::checkFoodAndBomb(std::vector<Uint32> &deleted, Maps &objectsOnBoard
 	std::set<Uint32> check = objectsOnBoard.colliding(getCenter(), getRadius());
 
 	for (auto it : check) //מחיקה של אוכל ופצצות והוספה לוקטור
-		if (distance(getCenter(), objectsOnBoard[it]->getCenter()) <= getRadius() + objectsOnBoard[it]->getRadius())
-		{
+		if (circlesCollide(objectsOnBoard[it].get())) {
 			newRadius(objectsOnBoard[it].get());
 			objectsOnBoard.eraseFromData(it);
 			deleted.push_back(it);
