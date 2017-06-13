@@ -75,6 +75,7 @@ unsigned Game::play(sf::RenderWindow &w, const Images &images)
 
 		//תזוזה של השחקן
 		if (!updateMove(speed))
+
 			return m_me->getScore();
 
 		//קבלת מידע מהשרת
