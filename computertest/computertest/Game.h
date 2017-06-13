@@ -21,12 +21,12 @@ public:
 
 private:
 	bool updateMove(float);
-	bool legalMove(float);
 	bool receiveChanges( const Images &images);
 	/*
 	*/
-	void Game::move(float);
-	float Game::direction(const sf::Vector2f& ver);
+	char Game::move(float);
+	float Game::direction(const pair& ver);
+	float Game::go(const pair& temp, float& max);
 	//===========================
 	Maps m_objectsOnBoard;
 	std::unordered_map<Uint32, std::unique_ptr<OtherPlayers>> m_players;

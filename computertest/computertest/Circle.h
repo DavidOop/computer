@@ -25,7 +25,7 @@
 
 class Maps;
 class OtherPlayers;
-
+typedef std::pair<sf::Vector2f, sf::Vector2f> pair;
 const float FOOD_RADIUS = 10;
 const float BOMB_RADIUS = 30;
 const float NEW_PLAYER = 60;
@@ -43,7 +43,7 @@ public:
 
 	Uint32 getId() const { return m_id; }
 	const Vector2f& getCenter() const { return m_center; }
-	void setCenter(Vector2f center) { m_center = center; setPosition({ center.x + getRadius(),center.y + getRadius() }); }
+	void setCenter(Vector2f center) { m_center = center; setPosition({ center.x - getRadius(),center.y - getRadius() }); }
 
 	void virtual f() = 0;
 

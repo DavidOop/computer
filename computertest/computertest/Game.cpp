@@ -97,9 +97,34 @@ bool Game::updateMove(float speed)
 	sf::Packet packet;
 	packet.clear();
 	bool temp = true;
-
-	move(speed);
-
+	static unsigned num = 10;
+	static char selected;
+	//move(speed);
+	if (num >= 10) {
+		selected = move(speed);
+		num = 0;
+	}
+	else {
+		switch (selected)
+		{
+		case 'u':
+			m_me->move(0, MOVE*speed);
+			break;
+		case 'd':
+			m_me->move(0, -MOVE*speed);
+			break;
+		case 'l':
+			m_me->move(-MOVE*speed, 0);
+			break;
+		case 'r':
+			m_me->move(MOVE*speed, 0);
+			break;
+		default:
+			break;
+		}
+	}
+	//std::cout << m_me->getCenter().x << " " << m_me->getCenter().y << '\n';
+	num++;
 	std::vector<Uint32> deleted;
 
 	temp = m_me->collision(deleted, m_objectsOnBoard, m_players, m_me.get());
@@ -113,58 +138,100 @@ bool Game::updateMove(float speed)
 }
 //--------------------------------------------------------------------------
 //==========================================================================
-void Game::move(float speed) {
+//char Game::move(float speed) {
+//
+//	//	std::cout << "move f\n";
+//	float max = -1;
+//	sf::Vector2f temp1 = m_me->getCenter();
+//	char d;
+//
+//	float up = go({ temp1.x , temp1.y + speed*MOVE }, max);
+//	float down = go({ temp1.x , temp1.y - speed*MOVE }, max);
+//	float left = go({ temp1.x - speed*MOVE, temp1.y }, max);
+//	float right = go({ temp1.x + speed*MOVE, temp1.y }, max);
+//
+//	if (max == up)d = 'u';
+//	if (max == down)d = 'd';
+//	if (max == right)d = 'r';
+//	if (max == left)d = 'l';
+//
+//	return d;
+//
+//}
+//-----------------------------------------------------------
+//float Game::go(const pair& temp, float& max) {
+//	float tempR = direction(temp);
+//	if (tempR > max) {
+//		max = tempR;
+//		m_me->setCenter(temp);
+//	}
+//	return tempR;
+//}
+//-----------------------------------------------
+char Game::move(float speed) {
 
-	std::cout << "move f\n";
+	speed *= MOVE;
+	const float RADIUS_CHECK = 100;
 	float max = -1, tempR;
-	sf::Vector2f temp;
-
-	temp = { m_me->getCenter().x , m_me->getCenter().y - speed*MOVE };
-	tempR = direction(temp);
-	if (tempR > max) {// up
-		std::cout << tempR <<" up\n";
-		max = tempR;
-		m_me->setCenter(temp);
+	auto x = m_me->getCenter().x;
+	auto y = m_me->getCenter().y;
+	char d;
+	sf::Vector2f temp, moveTo;
+	temp = sf::Vector2f{ x + speed, y };//right
+	if (temp.x + m_me->getRadius()  < BOARD_SIZE.x) {
+		tempR = direction(pair({ temp.x, temp.y - RADIUS_CHECK }, { temp.x + RADIUS_CHECK, temp.y + RADIUS_CHECK }));// up
+		if (tempR > max) {
+			moveTo = temp;
+			max = tempR;
+			d = 'r';
+		//	std::cout << "right: " << tempR << '\n';
+		}
 	}
-	temp = { m_me->getCenter().x , m_me->getCenter().y + speed*MOVE };
-	tempR = direction(temp);
-	if (tempR > max) {// down
-		max = tempR;
-		m_me->setCenter(temp);
-		std::cout <<tempR << " down\n";
-
+	temp = sf::Vector2f{ x - speed, y };//left
+	if (temp.x - m_me->getRadius()  > 0) {
+		tempR = direction(pair({ temp.x - RADIUS_CHECK, temp.y - RADIUS_CHECK }, { temp.x, temp.y+ RADIUS_CHECK }));
+		if (tempR > max) {
+			moveTo = temp;
+			max = tempR;
+			d = 'l';
+	//		std::cout << "left: " << tempR << '\n';
+		}
 	}
-	temp = { m_me->getCenter().x - speed*MOVE , m_me->getCenter().y };
-	tempR = direction(temp);
-	if (tempR > max) {// right
-		max = tempR;
-		m_me->setCenter(temp);
-		std::cout << tempR << " right\n";
+	temp = sf::Vector2f{ x , y - speed };
+	if (temp.y - m_me->getRadius() > 0) {
+		tempR = direction(pair({ temp.x - RADIUS_CHECK, temp.y - RADIUS_CHECK }, { temp.x + RADIUS_CHECK, temp.y }));
+		if (tempR > max) {// down
+			moveTo = temp;//
+			max = tempR;
+			d = 'd';
+	//		std::cout << "down: " << tempR << '\n';
 
+		}
 	}
-	temp = { m_me->getCenter().x + speed*MOVE  , m_me->getCenter().y };
-	tempR = direction(temp);
-	if (tempR > max) {// left
-		max = tempR;
-		m_me->setCenter(temp);
-		std::cout << tempR << " left\n";
-
+	temp = sf::Vector2f{ x , y + speed };
+	if (temp.y + m_me->getRadius()  < BOARD_SIZE.y) {
+		tempR = direction(pair({ temp.x - RADIUS_CHECK , temp.y }, { temp.x + RADIUS_CHECK, temp.y + RADIUS_CHECK }));
+		if (tempR > max) {// up
+			moveTo = temp;//
+			d = 'u';
+		//	std::cout << "up: " << tempR << '\n';
+		}
 	}
-	///Sleep(500);
-
+	m_me->setCenter(moveTo);
+	//std::cout << "=========================" << max << '\n';
+	return d;
 }
 //==========================================================================================================
-float Game::direction(const sf::Vector2f& ver) {
-	if (ver.x < 0 || ver.y < 0 || ver.x > BOARD_SIZE.x || ver.y > BOARD_SIZE.y)
-		return -1.f;
+float Game::direction(const pair& ver) {
+	//if (ver.x < 0 || ver.y < 0 || ver.x > BOARD_SIZE.x || ver.y > BOARD_SIZE.y)
+	//	return -1000;
 
-	const float RADIUS = 1000;
-	auto intersection = m_objectsOnBoard.colliding(ver, RADIUS);
+	auto intersection = m_objectsOnBoard.colliding(ver);
 	//auto myRad = m_data.find(m_id)->second.getRadius();
 	float sum = 0;
 	for (auto it = intersection.begin(); it != intersection.end(); ++it) {
-		//if (!dynamic_cast<Bomb>(m_objectsOnBoard.find(it))
-		//sum += (FOOD_RADIUS*(float(rand()%3)+1.f));
+		if (*it >= 1000 && *it <= 5000)
+		//sum += (FOOD_RADIUS*(float(rand() % 3) + 1.f));
 		//else if (isIntersect(m_data.find(*it)->second.getId()))//check there are no bombs
 		sum += FOOD_RADIUS;
 		//	sum = -100000.f;
