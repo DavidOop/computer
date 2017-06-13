@@ -30,6 +30,7 @@ public:
 
 	void insert(const std::pair<Uint32, sf::Vector2f> &);
 	void eraseFromData(sf::Uint32 );
+	std::set<sf::Uint32> Maps::colliding(const pair& ver)const;
 	std::set<Uint32> Maps::colliding(const Vector2f& ver, const float radius);
 private:
 
