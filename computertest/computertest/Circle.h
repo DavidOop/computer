@@ -43,7 +43,7 @@ public:
 
 	Uint32 getId() const { return m_id; }
 	const Vector2f& getCenter() const { return m_center; }
-	void setCenter(Vector2f center) { m_center = center; }
+	void setCenter(Vector2f center) { m_center = center; setPosition({ center.x + getRadius(),center.y + getRadius() }); }
 
 	void virtual f() = 0;
 
