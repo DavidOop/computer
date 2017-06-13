@@ -79,6 +79,11 @@ unsigned Game::play(sf::RenderWindow &w, const Images &images)
 
 			return m_me->getScore();
 
+
+		if (m_me->getRadius() < NEW_PLAYER)
+			return m_me->getScore();
+
+
 		//קבלת מידע מהשרת
 		if (!receiveChanges(images))
 			return m_me->getScore();
