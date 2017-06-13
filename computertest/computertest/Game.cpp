@@ -80,9 +80,6 @@ unsigned Game::play(sf::RenderWindow &w, const Images &images)
 			return m_me->getScore();
 
 
-		if (m_me->getRadius() < NEW_PLAYER)
-			return m_me->getScore();
-
 
 		//קבלת מידע מהשרת
 		if (!receiveChanges(images))
@@ -135,6 +132,10 @@ bool Game::updateMove(float speed)
 	std::vector<Uint32> deleted;
 
 	temp = m_me->collision(deleted, m_objectsOnBoard, m_players, m_me.get());
+
+	if (m_me->getRadius() < NEW_PLAYER)
+		temp = false;
+
 	if (!temp)
 		deleted.push_back(m_me->getId()); // אם מתתי
 
