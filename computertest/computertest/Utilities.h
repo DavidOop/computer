@@ -5,7 +5,32 @@
 #include <unordered_map>
 #include <set>
 #include "Circle.h"
+const unsigned SQUARE = 5;
 
+struct Square;
+class Game;
+typedef std::shared_ptr<Square> sq;
+//================================================================================
+struct Square {
+	Square(const sf::Vector2f& ver) :_ver(ver) {}
+	sf::Vector2f _ver;
+	sq _up{};
+	sq _down{};
+	sq _left{};
+	sq _right{};
+
+	sq _parent{};
+	bool _visited{ false };
+public:
+	bool update(sq&, const Game&);
+	//std::set<sf::Uint32> playerOnSquare(const Game&);
+	void findParent(const sq&);
+	template <typename T>
+	bool safeSquare(const Game&, const std::set<sf::Uint32>&, T f);
+	bool Square::collide(Circle* c);
+	sf::Vector2f limitsLower(const float RADIUS) const { return{ _ver.x - RADIUS - SQUARE , _ver.y - RADIUS - SQUARE }; }
+	sf::Vector2f limitsUpper(const float RADIUS) const { return{ _ver.x + RADIUS + SQUARE , _ver.y + RADIUS + SQUARE }; }
+};
 //==========================================================================
 //=================================MAPS=====================================
 //==========================================================================
@@ -27,9 +52,10 @@ public:
 	using std::unordered_map<Uint32, std::unique_ptr<FoodAndBomb>>::operator[];
 	using std::unordered_map<Uint32, std::unique_ptr<FoodAndBomb>>::begin;
 	using std::unordered_map<Uint32, std::unique_ptr<FoodAndBomb>>::end;
+	using std::unordered_map<Uint32, std::unique_ptr<FoodAndBomb>>::find;
 
 	void insert(const std::pair<Uint32, sf::Vector2f> &);
-	void eraseFromData(sf::Uint32 );
+	void eraseFromData(sf::Uint32);
 	std::set<sf::Uint32> Maps::colliding(const pair& ver)const;
 	std::set<Uint32> Maps::colliding(const Vector2f& ver, const float radius);
 private:
@@ -68,3 +94,8 @@ sf::Packet& operator >> (sf::Packet& packet, sf::Vector2f& vertex);
 
 sf::Packet& operator << (sf::Packet& packet, const sf::Vector2f &vertex);
 sf::Packet& operator << (sf::Packet& packet, const std::vector<Uint32>& deleted);
+//==============================================================
+
+inline bool isFood(sf::Uint32 id) { return id >= FOOD_LOWER &&id <= FOOD_UPPER; }
+inline bool isBomb(sf::Uint32 id) { return id >= BOMBS_LOWER &&id <= BOMBS_UPPER; }
+inline bool isPlayer(sf::Uint32 id) { return id >= PLAYER_LOWER &&id <= PLAYER_UPPER; }

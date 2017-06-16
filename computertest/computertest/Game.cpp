@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <Windows.h>
-
+#include <queue>
 //====================================================================================
 //================================ CONSTRUCTOR =======================================
 //====================================================================================
@@ -13,7 +13,7 @@ Game::Game(const Images &images, Uint32 image_id, sf::View& view)
 	m_view(view)
 {
 	if (m_socket.connect(sf::IpAddress::LocalHost, 5555) != sf::TcpSocket::Done)
-	//	if (m_socket.connect("10.2.16.95", 5555) != sf::TcpSocket::Done)
+		//	if (m_socket.connect("10.2.16.95", 5555) != sf::TcpSocket::Done)
 		std::cout << "no connecting\n";
 
 	sf::Packet packet;
@@ -61,6 +61,15 @@ void Game::receive(const Images &images)
 	m_me->setPosition(temp.second);
 	m_me->setCenter(temp.second + Vector2f{ NEW_PLAYER,NEW_PLAYER });
 }
+//===================================================================================
+void Game::setSquare() {
+	for (unsigned i = 0; i < BOARD_SIZE.x; ++i)
+		for (unsigned j = 0; j < BOARD_SIZE.y; ++j) {
+			m_squares[i].push_back(std::make_shared<Square>(sf::Vector2f{ float(i*SQUARE),float(j*SQUARE) }));
+			if (j > 0) { m_squares[i][j]->_left = m_squares[i][j - 1]; m_squares[i][j - 1]->_right = m_squares[i][j]; }
+			if (i > 0) { m_squares[i][j]->_down = m_squares[i - 1][j]; m_squares[i - 1][j]->_up = m_squares[i][j]; }
+		}
+}
 
 //====================================================================================
 //================================     PLAY     ======================================
@@ -75,9 +84,9 @@ unsigned Game::play(sf::RenderWindow &w, const Images &images)
 		auto speed = TimeClass::instance().RestartClock();
 
 		//תזוזה של השחקן
-		if (!updateMove(speed))
-
-			return m_me->getScore();
+		if (m_receive) // אם הוא קלט את התזוזה הקודמת שלו
+			if (!updateMove(speed))
+				return m_me->getScore();
 
 
 
@@ -104,31 +113,8 @@ bool Game::updateMove(float speed)
 	static unsigned num = 10;
 	static char selected;
 	move(speed);
-	/*if (num >= 10) {
-		selected = move(speed);
-		num = 0;
-	}
-	else {
-		switch (selected)
-		{
-		case 'u':
-			m_me->move(0, MOVE*speed);
-			break;
-		case 'd':
-			m_me->move(0, -MOVE*speed);
-			break;
-		case 'l':
-			m_me->move(-MOVE*speed, 0);
-			break;
-		case 'r':
-			m_me->move(MOVE*speed, 0);
-			break;
-		default:
-			break;
-		}
-	}*/
-	//std::cout << m_me->getCenter().x << " " << m_me->getCenter().y << '\n';
-	num++;
+	//std::unique_ptr<MyPlayer> tempMe = std::make_unique<MyPlayer>(*m_me.get());
+
 	std::vector<Uint32> deleted;
 
 	temp = m_me->collision(deleted, m_objectsOnBoard, m_players, m_me.get());
@@ -148,42 +134,11 @@ bool Game::updateMove(float speed)
 
 	return temp;
 }
-//--------------------------------------------------------------------------
-//==========================================================================
-//char Game::move(float speed) {
-//
-//	//	std::cout << "move f\n";
-//	float max = -1;
-//	sf::Vector2f temp1 = m_me->getCenter();
-//	char d;
-//
-//	float up = go({ temp1.x , temp1.y + speed*MOVE }, max);
-//	float down = go({ temp1.x , temp1.y - speed*MOVE }, max);
-//	float left = go({ temp1.x - speed*MOVE, temp1.y }, max);
-//	float right = go({ temp1.x + speed*MOVE, temp1.y }, max);
-//
-//	if (max == up)d = 'u';
-//	if (max == down)d = 'd';
-//	if (max == right)d = 'r';
-//	if (max == left)d = 'l';
-//
-//	return d;
-//
-//}
-//-----------------------------------------------------------
-//float Game::go(const pair& temp, float& max) {
-//	float tempR = direction(temp);
-//	if (tempR > max) {
-//		max = tempR;
-//		m_me->setCenter(temp);
-//	}
-//	return tempR;
-//}
 //-----------------------------------------------
 char Game::move(float speed) {
 
 	speed *= MOVE;
-	const float RADIUS_CHECK = 500;
+	const float RADIUS_CHECK = 1500;
 	float max = -1, tempR;
 	auto x = m_me->getCenter().x;
 	auto y = m_me->getCenter().y;
@@ -191,25 +146,25 @@ char Game::move(float speed) {
 	sf::Vector2f temp, moveTo;
 	std::cout << "r: ";
 	temp = sf::Vector2f{ x + speed, y };//right
-	if (temp.x + m_me->getRadius()  < BOARD_SIZE.x) {
+	if (temp.x + m_me->getRadius() < BOARD_SIZE.x) {
 		tempR = direction(pair({ temp.x, temp.y - RADIUS_CHECK }, { temp.x + RADIUS_CHECK, temp.y + RADIUS_CHECK }));// up
 		if (tempR > max) {
 			moveTo = temp;
 			max = tempR;
 			d = 'r';
-		//	std::cout << "right: " << tempR << '\n';
+			//	std::cout << "right: " << tempR << '\n';
 		}
 	}
 	std::cout << "l: ";
 
 	temp = sf::Vector2f{ x - speed, y };//left
-	if (temp.x - m_me->getRadius()  > 0) {
-		tempR = direction(pair({ temp.x - RADIUS_CHECK, temp.y - RADIUS_CHECK }, { temp.x, temp.y+ RADIUS_CHECK }));
+	if (temp.x - m_me->getRadius() > 0) {
+		tempR = direction(pair({ temp.x - RADIUS_CHECK, temp.y - RADIUS_CHECK }, { temp.x, temp.y + RADIUS_CHECK }));
 		if (tempR > max) {
 			moveTo = temp;
 			max = tempR;
 			d = 'l';
-	//		std::cout << "left: " << tempR << '\n';
+			//		std::cout << "left: " << tempR << '\n';
 		}
 	}
 	std::cout << "d: ";
@@ -221,18 +176,18 @@ char Game::move(float speed) {
 			moveTo = temp;//
 			max = tempR;
 			d = 'd';
-	//		std::cout << "down: " << tempR << '\n';
+			//		std::cout << "down: " << tempR << '\n';
 
 		}
 	}
 	std::cout << "u: ";
 	temp = sf::Vector2f{ x , y + speed };
-	if (temp.y + m_me->getRadius()  < BOARD_SIZE.y) {
+	if (temp.y + m_me->getRadius() < BOARD_SIZE.y) {
 		tempR = direction(pair({ temp.x - RADIUS_CHECK , temp.y }, { temp.x + RADIUS_CHECK, temp.y + RADIUS_CHECK }));
 		if (tempR > max) {// up
 			moveTo = temp;//
 			d = 'u';
-		//	std::cout << "up: " << tempR << '\n';
+			//	std::cout << "up: " << tempR << '\n';
 		}
 	}
 	m_me->setCenter(moveTo);
@@ -242,18 +197,76 @@ char Game::move(float speed) {
 }
 //==========================================================================================================
 float Game::direction(const pair& ver) {
-	
+
 	auto intersection = m_objectsOnBoard.colliding(ver);
 	float sum = 0;
 	for (auto it = intersection.begin(); it != intersection.end(); ++it) {
-		if (*it >= 1000 && *it <= 5000)
-		//sum += (FOOD_RADIUS*(float(rand() % 3) + 1.f));
-		//else if (isIntersect(m_data.find(*it)->second.getId()))//check there are no bombs
-		sum += FOOD_RADIUS;
+		if (isFood(*it))
+			//sum += (FOOD_RADIUS*(float(rand() % 3) + 1.f));
+			//else if (isIntersect(m_data.find(*it)->second.getId()))//check there are no bombs
+			sum += FOOD_RADIUS;
 		//	sum = -100000.f;
 	}
 	std::cout << sum << '\n';
 	return sum;
+}
+//===================== BFS ==================================
+const sq& Game::bfs(sq square) {
+	std::queue<sq> curr;//the current nodes that are taken care of
+	curr.push(square);
+	square->_visited = true;
+
+	while (!curr.empty()) {
+		auto tempC = curr.front();
+		auto intersection = m_objectsOnBoard.colliding(pair(tempC->limitsLower(FOOD_RADIUS), tempC->limitsUpper(FOOD_RADIUS)));
+		if (tempC->safeSquare((*this), intersection, isFood)) {
+			 tempC->findParent(square);
+			 return tempC;
+		}
+		if (tempC->_up->update(tempC, (*this)))curr.push(tempC->_up);
+		if (tempC->_right->update(tempC, (*this)))curr.push(tempC->_right);
+		if (tempC->_down->update(tempC, (*this)))curr.push(tempC->_down);
+		if (tempC->_left->update(tempC, (*this)))curr.push(tempC->_left);
+		curr.pop();
+	}
+
+
+	return square;
+}
+//==============================================================
+void Square::findParent(const sq& root) {
+	while (&_parent != &root)
+		*this = *_parent;		
+}
+//======================================================
+bool Square::update(sq& parent, const Game& game) {
+	if (this == NULL && _visited)
+		return false;
+	
+	auto intersection = game.getObjectsOnBoard().colliding(pair(limitsLower(BOMB_RADIUS), limitsUpper(BOMB_RADIUS)));
+	if (!safeSquare(game, intersection, isBomb))
+	return false;
+
+	_parent = parent;
+	_visited = true;
+	return true;
+}
+//=====================================================================================
+template <typename T>
+bool Square::safeSquare(const Game& game, const std::set<sf::Uint32>& keys, T function) {
+	for (auto it = keys.begin(); it != keys.end(); ++it) {
+		if (function(*it))
+			if (collide(game.findInMap(*it)->second.get()))
+				return false;
+	}
+	return true;
+}
+//=================================================================
+bool Square::collide(Circle* c) {
+	return (distance(c->getCenter(), _ver) > c->getRadius()
+		&& distance(c->getCenter(), _ver + sf::Vector2f{ 0,float(SQUARE) }) > c->getRadius()
+		&& distance(c->getCenter(), _ver + sf::Vector2f{ float( SQUARE),0 }) > c->getRadius()
+		&& distance(c->getCenter(), _ver + sf::Vector2f{ float(SQUARE),float(SQUARE) }) > c->getRadius());
 }
 //====================================================================================
 //===========================      RECEIVE DATA      =================================
@@ -262,41 +275,59 @@ float Game::direction(const pair& ver) {
 bool Game::receiveChanges(const Images &images)
 {
 	sf::Packet packet;
-	if (m_socket.receive(packet) == sf::TcpSocket::Done) {
-		static int c = 0;
-		while (!packet.endOfPacket())
-		{
-			std::pair<Uint32, sf::Vector2f> temp;
-			packet >> temp;
-			std::vector<Uint32> del;
 
-			if (temp.first >= FOOD_LOWER && temp.first <= BOMBS_UPPER) { // אוכל או פצצות חדשות
-				m_objectsOnBoard.insert(temp);
-				c++;
+	static int receiv = 0;
+	//std::cout << "receive\n";
+
+	m_socket.receive(packet);
+
+	while (!packet.endOfPacket())
+	{
+		std::pair<Uint32, sf::Vector2f> temp;
+		if (!(packet >> temp))
+			continue;
+		std::vector<Uint32> del;
+
+		//	std::cout << temp.first << std::endl;
+
+		if (temp.first >= FOOD_LOWER && temp.first <= BOMBS_UPPER) // אוכל או פצצות חדשות
+		{
+			m_objectsOnBoard.insert(temp);
+			//	std::cout << "receive " << receiv <<" "<<temp.first<< '\n';
+			//std::cout << temp.first << std::endl;
+		}
+		else if (temp.first >= PLAYER_LOWER && temp.first <= PLAYER_UPPER)// שחקן
+		{
+			if (temp.first == m_me->getId())// השחקן שלי
+			{
+				m_receive = true;
 			}
 
-			else if (temp.first >= PLAYER_LOWER && temp.first <= PLAYER_UPPER)// שחקן
+			else if (m_players.find(temp.first) != m_players.end())// תזוזה של שחקן (שחקן קיים..)י
 			{
-				if (temp.first == m_me->getId())// השחקן שלי
-					continue;
-				if (m_players.find(temp.first) != m_players.end())// תזוזה של שחקן (שחקן קיים..)י
-				{
-					m_players[temp.first]->setPosition(temp.second);
-					m_players[temp.first]->setCenter(m_players[temp.first]->getPosition() + Vector2f{ m_players[temp.first]->getRadius(),m_players[temp.first]->getRadius() });
-					if (!m_players[temp.first]->collision(del, m_objectsOnBoard, m_players, m_me.get()))
-						return false; //אם השחקן הרג אותי
-				}
-				else // שחקן חדש
-				{
-					Uint32 image;
-					packet >> image;
-					m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[image], NEW_PLAYER, temp.second));
-				}
+				//	m_players[temp.first]->setPosition(temp.second);
+					//m_players[temp.first]->setCenter(m_players[temp.first]->getPosition() + Vector2f{ m_players[temp.first]->getRadius(),m_players[temp.first]->getRadius() });
+				m_players[temp.first]->setCenter(temp.second);
+				if (!m_players[temp.first]->collision(del, m_objectsOnBoard, m_players, m_me.get()))
+					return false; //אם השחקן הרג אותי
+			}
+			else // שחקן חדש
+			{
+				addPlayer(temp, packet, images);
+				/*Uint32 image;
+				packet >> image;
+				m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[image], NEW_PLAYER, temp.second));*/
 			}
 		}
-		std::cout << "food :" << c << '\n';
 	}
 	return true;
+}
+//------------------------------------------------------------------------------------
+void Game::addPlayer(const std::pair<Uint32, sf::Vector2f> &temp, sf::Packet &packet, const Images &images)
+{
+	Uint32 image;
+	packet >> image;
+	m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[image], NEW_PLAYER, temp.second));
 }
 
 //====================================================================================
@@ -342,7 +373,6 @@ void Game::draw(sf::RenderWindow &w) const
 	w.display();
 
 }
-
 
 //*************************************************************************************
 //****************************    PLAYER FUNCTION   ***********************************
