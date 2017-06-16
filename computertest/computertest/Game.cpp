@@ -15,7 +15,7 @@ Game::Game(const Images &images, Uint32 image_id, sf::View& view)
 	if (m_socket.connect(sf::IpAddress::LocalHost, 5555) != sf::TcpSocket::Done)
 		//	if (m_socket.connect("10.2.16.95", 5555) != sf::TcpSocket::Done)
 		std::cout << "no connecting\n";
-
+	setSquare();
 	sf::Packet packet;
 	packet << image_id; //שליחה לשרת של התמונה שלי
 	if (m_socket.send(packet) != sf::TcpSocket::Done)
@@ -63,12 +63,17 @@ void Game::receive(const Images &images)
 }
 //===================================================================================
 void Game::setSquare() {
-	for (unsigned i = 0; i < BOARD_SIZE.x; ++i)
-		for (unsigned j = 0; j < BOARD_SIZE.y; ++j) {
-			m_squares[i].push_back(std::make_shared<Square>(sf::Vector2f{ float(i*SQUARE),float(j*SQUARE) }));
+
+	for (unsigned i = 0; i < BOARD_SIZE.x/ SQUARE; ++i) {
+		std::vector<sq> temp;
+		for (unsigned j = 0; j < BOARD_SIZE.y/ SQUARE; ++j)
+			temp.push_back(std::make_shared<Square>(sf::Vector2f{ float(i*SQUARE),float(j*SQUARE) }));	
+		m_squares.push_back(temp);
+		for (unsigned j = 0; j < BOARD_SIZE.y/SQUARE; ++j) {
 			if (j > 0) { m_squares[i][j]->_left = m_squares[i][j - 1]; m_squares[i][j - 1]->_right = m_squares[i][j]; }
 			if (i > 0) { m_squares[i][j]->_down = m_squares[i - 1][j]; m_squares[i - 1][j]->_up = m_squares[i][j]; }
 		}
+	}
 }
 
 //====================================================================================
@@ -135,93 +140,33 @@ bool Game::updateMove(float speed)
 	return temp;
 }
 //-----------------------------------------------
-char Game::move(float speed) {
+void Game::move(float speed) {
+	sf::Vector2u s{ unsigned(m_me->getCenter().x / SQUARE) ,unsigned(m_me->getCenter().y / SQUARE) };
+	auto direction = bfs(m_squares[s.x][s.y]);
+	if (direction->_up > m_squares[s.x][s.y]->_up)m_me->move(0, speed*MOVE);
+	if (direction->_down > m_squares[s.x][s.y]->_down)m_me->move(0, -speed*MOVE);
+	if (direction->_left > m_squares[s.x][s.y]->_left)m_me->move(-speed*MOVE, 0);
+	if (direction->_right > m_squares[s.x][s.y]->_right)m_me->move(speed*MOVE, 0);
 
-	speed *= MOVE;
-	const float RADIUS_CHECK = 1500;
-	float max = -1, tempR;
-	auto x = m_me->getCenter().x;
-	auto y = m_me->getCenter().y;
-	char d;
-	sf::Vector2f temp, moveTo;
-	std::cout << "r: ";
-	temp = sf::Vector2f{ x + speed, y };//right
-	if (temp.x + m_me->getRadius() < BOARD_SIZE.x) {
-		tempR = direction(pair({ temp.x, temp.y - RADIUS_CHECK }, { temp.x + RADIUS_CHECK, temp.y + RADIUS_CHECK }));// up
-		if (tempR > max) {
-			moveTo = temp;
-			max = tempR;
-			d = 'r';
-			//	std::cout << "right: " << tempR << '\n';
-		}
-	}
-	std::cout << "l: ";
-
-	temp = sf::Vector2f{ x - speed, y };//left
-	if (temp.x - m_me->getRadius() > 0) {
-		tempR = direction(pair({ temp.x - RADIUS_CHECK, temp.y - RADIUS_CHECK }, { temp.x, temp.y + RADIUS_CHECK }));
-		if (tempR > max) {
-			moveTo = temp;
-			max = tempR;
-			d = 'l';
-			//		std::cout << "left: " << tempR << '\n';
-		}
-	}
-	std::cout << "d: ";
-
-	temp = sf::Vector2f{ x , y - speed };
-	if (temp.y - m_me->getRadius() > 0) {
-		tempR = direction(pair({ temp.x - RADIUS_CHECK, temp.y - RADIUS_CHECK }, { temp.x + RADIUS_CHECK, temp.y }));
-		if (tempR > max) {// down
-			moveTo = temp;//
-			max = tempR;
-			d = 'd';
-			//		std::cout << "down: " << tempR << '\n';
-
-		}
-	}
-	std::cout << "u: ";
-	temp = sf::Vector2f{ x , y + speed };
-	if (temp.y + m_me->getRadius() < BOARD_SIZE.y) {
-		tempR = direction(pair({ temp.x - RADIUS_CHECK , temp.y }, { temp.x + RADIUS_CHECK, temp.y + RADIUS_CHECK }));
-		if (tempR > max) {// up
-			moveTo = temp;//
-			d = 'u';
-			//	std::cout << "up: " << tempR << '\n';
-		}
-	}
-	m_me->setCenter(moveTo);
-	std::cout << '\n';
-	//std::cout << "=========================" << max << '\n';
-	return d;
-}
-//==========================================================================================================
-float Game::direction(const pair& ver) {
-
-	auto intersection = m_objectsOnBoard.colliding(ver);
-	float sum = 0;
-	for (auto it = intersection.begin(); it != intersection.end(); ++it) {
-		if (isFood(*it))
-			//sum += (FOOD_RADIUS*(float(rand() % 3) + 1.f));
-			//else if (isIntersect(m_data.find(*it)->second.getId()))//check there are no bombs
-			sum += FOOD_RADIUS;
-		//	sum = -100000.f;
-	}
-	std::cout << sum << '\n';
-	return sum;
 }
 //===================== BFS ==================================
-const sq& Game::bfs(sq square) {
+sq Game::bfs(sq square) {
 	std::queue<sq> curr;//the current nodes that are taken care of
 	curr.push(square);
 	square->_visited = true;
+	square->_parent = square;
 
 	while (!curr.empty()) {
 		auto tempC = curr.front();
 		auto intersection = m_objectsOnBoard.colliding(pair(tempC->limitsLower(FOOD_RADIUS), tempC->limitsUpper(FOOD_RADIUS)));
-		if (tempC->safeSquare((*this), intersection, isFood)) {
-			 tempC->findParent(square);
-			 return tempC;
+		if (safeSquare(intersection, isFood, *tempC)) {
+			tempC->findParent(square);
+			while (!curr.empty()) {
+				curr.front()->clear();
+				curr.front()->_visited = false;
+				curr.pop();
+			}
+			return tempC;
 		}
 		if (tempC->_up->update(tempC, (*this)))curr.push(tempC->_up);
 		if (tempC->_right->update(tempC, (*this)))curr.push(tempC->_right);
@@ -233,39 +178,40 @@ const sq& Game::bfs(sq square) {
 
 	return square;
 }
+//=================================================================
+void Square::clear() {
+	if (_parent == nullptr)
+		return;
+		*this = *_parent;
+		clear();
+		_parent = nullptr;
+}
 //==============================================================
 void Square::findParent(const sq& root) {
 	while (&_parent != &root)
-		*this = *_parent;		
+		*this = *_parent;
+	//_parent = nullptr;
 }
 //======================================================
 bool Square::update(sq& parent, const Game& game) {
-	if (this == NULL && _visited)
+	if (this == nullptr && _visited)
 		return false;
-	
+
 	auto intersection = game.getObjectsOnBoard().colliding(pair(limitsLower(BOMB_RADIUS), limitsUpper(BOMB_RADIUS)));
-	if (!safeSquare(game, intersection, isBomb))
-	return false;
+	if (game.safeSquare(intersection, isBomb,(*this)))
+		return false;
 
 	_parent = parent;
 	_visited = true;
 	return true;
 }
 //=====================================================================================
-template <typename T>
-bool Square::safeSquare(const Game& game, const std::set<sf::Uint32>& keys, T function) {
-	for (auto it = keys.begin(); it != keys.end(); ++it) {
-		if (function(*it))
-			if (collide(game.findInMap(*it)->second.get()))
-				return false;
-	}
-	return true;
-}
+
 //=================================================================
-bool Square::collide(Circle* c) {
+bool Square::collide(Circle* c)const {
 	return (distance(c->getCenter(), _ver) > c->getRadius()
 		&& distance(c->getCenter(), _ver + sf::Vector2f{ 0,float(SQUARE) }) > c->getRadius()
-		&& distance(c->getCenter(), _ver + sf::Vector2f{ float( SQUARE),0 }) > c->getRadius()
+		&& distance(c->getCenter(), _ver + sf::Vector2f{ float(SQUARE),0 }) > c->getRadius()
 		&& distance(c->getCenter(), _ver + sf::Vector2f{ float(SQUARE),float(SQUARE) }) > c->getRadius());
 }
 //====================================================================================

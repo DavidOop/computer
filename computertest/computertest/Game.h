@@ -22,15 +22,17 @@ public:
 	const auto& getOtherPlayers()const { return m_players; }
 	void addPlayer(const std::pair<Uint32, sf::Vector2f> &temp, sf::Packet &packet, const Images &images);
 
-	//template<typename T>
+	template<typename T>
+	bool safeSquare(const std::set<sf::Uint32>&, T, const Square&)const;
+	//------------------------------
 	auto findInMap(sf::Uint32 key)const{ return m_objectsOnBoard.find(key); }
 private:
 	bool updateMove(float);
 	bool receiveChanges(const Images &images);
 	//-----------------------------------------
-	char Game::move(float);
+	void Game::move(float);
 	float Game::direction(const pair& ver);
-	//------------------------------
+	
 	Maps m_objectsOnBoard;
 	std::unordered_map<Uint32, std::unique_ptr<OtherPlayers>> m_players;
 	sf::Sprite m_background;
@@ -42,6 +44,15 @@ private:
 
 	void setSquare();
 	std::vector<std::vector<sq>> m_squares;
-	const sq& bfs(sq square);
+	sq bfs(sq square);
 };
 //--------------------------------------------------------------------------
+template <typename T>
+bool Game::safeSquare(const std::set<sf::Uint32>& keys, T function, const Square& s)const {
+	for (auto it = keys.begin(); it != keys.end(); ++it) {
+		if (function(*it))
+			if (s.collide(m_objectsOnBoard.find(*it)->second.get()))
+				return true;
+	}
+	return false;
+}
