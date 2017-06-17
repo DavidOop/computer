@@ -32,8 +32,8 @@ using sf::Vector2f;
 
 typedef std::pair<sf::Vector2f, sf::Vector2f> pair;
 
-const float FOOD_RADIUS = 10;
-const float BOMB_RADIUS = 30;
+const float FOOD_RADIUS = 22;
+const float BOMB_RADIUS = 50;
 const float NEW_PLAYER = 60;
 const unsigned MAX_IMAGE = 100;
 

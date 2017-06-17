@@ -24,7 +24,7 @@ struct Square {
 public:
 	bool update(sq&, const Game&);
 	//std::set<sf::Uint32> playerOnSquare(const Game&);
-	void findParent(const sq&);
+	sq findParent(const sq&);
 	bool Square::collide(Circle* c)const;
 	void clear();
 	sf::Vector2f limitsLower(const float RADIUS) const { return{ _ver.x - RADIUS - SQUARE , _ver.y - RADIUS - SQUARE }; }
