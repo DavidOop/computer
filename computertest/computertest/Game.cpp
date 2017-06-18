@@ -13,11 +13,11 @@ Game::Game(const Images &images, const Fonts &fonts, Uint32 image_id, sf::View& 
 	m_view(view)
 {
 	//if (m_socket.connect(sf::IpAddress::LocalHost, 5555) != sf::TcpSocket::Done)
-	if (m_socket.connect("10.2.15.207", 5555) != sf::TcpSocket::Done)
+	if (m_socket.connect("10.2.16.95", 5555) != sf::TcpSocket::Done)
 		std::cout << "no connecting\n";
 	setSquare();
 	sf::Packet packet;
-	packet << image_id; //שליחה לשרת של התמונה שלי
+	packet << image_id<<"computer"; //שליחה לשרת של התמונה שלי
 	if (m_socket.send(packet) != sf::TcpSocket::Done)
 		std::cout << "no sending image\n";
 
@@ -47,7 +47,8 @@ void Game::receive(const Images &images, const Fonts &fonts)
 
 			else if (temp.first >= PLAYER_LOWER && temp.first <= PLAYER_UPPER)//???????????????????????
 			{
-				packet >> radius >> image;
+				sf::String s;
+				packet >> radius >> image>>s;
 				m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[image], fonts[SETTINGS], radius, temp.second));
 			}
 		}
@@ -167,7 +168,7 @@ std::stack<sq> Game::bfs(sq square) {
 	square->_visited = true;
 	square->_parent = nullptr;
 	std::set<sf::Uint32> intersection;
-
+	std::stack<sq> a;
 
 	while (!curr.empty()) {
 		auto& tempC = curr.front();
@@ -187,7 +188,7 @@ std::stack<sq> Game::bfs(sq square) {
 		curr.pop();
 	}
 
-	//return square;
+	return a;
 }
 //=================================================================
 void Game::clear(const sq& root, sq& curr) {
@@ -283,7 +284,8 @@ void Game::receiveChanges(const Images &images, const Fonts &fonts)
 void Game::addPlayer(const std::pair<Uint32, sf::Vector2f> &temp, sf::Packet &packet, const Images &images, const Fonts &fonts)
 {
 	Uint32 image;
-	packet >> image;
+	sf::String s;
+	packet >> image>>s;
 	m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[image], fonts[SETTINGS], NEW_PLAYER, temp.second));
 }
 //------------------------------------------------------------------------------------
