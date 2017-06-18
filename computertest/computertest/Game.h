@@ -5,8 +5,8 @@
 #include <map>
 #include <unordered_map>
 
-const float MOVE = 50;
-const sf::Vector2f BOARD_SIZE{ 3500.f,3500.f };
+const float MOVE = 400;
+const sf::Vector2f BOARD_SIZE{ 3000.f,3000.f };
 
 
 class Game
@@ -41,10 +41,10 @@ private:
 	bool m_receive{ true };
 	sf::TcpSocket m_socket;
 	sf::View& m_view;
-	void Game::clear();
+	void Game::clear(const sq& root, sq& curr);
 	void setSquare();
 	std::vector<std::vector<sq>> m_squares;
-	sq bfs(sq square);
+	std::stack<sq> bfs(sq square);
 };
 //--------------------------------------------------------------------------
 template <typename T>

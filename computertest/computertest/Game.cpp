@@ -82,12 +82,12 @@ void Game::setSquare() {
 unsigned Game::play(sf::RenderWindow &w, const Images &images)
 {
 	m_socket.setBlocking(false);
-	draw(w);
+	//draw(w);
 
+	auto speed = TimeClass::instance().RestartClock();
 	sf::Packet packet;
 	while (true)
 	{
-		auto speed = TimeClass::instance().RestartClock();
 
 		//תזוזה של השחקן
 		if (m_receive) // אם הוא קלט את התזוזה הקודמת שלו
@@ -100,7 +100,7 @@ unsigned Game::play(sf::RenderWindow &w, const Images &images)
 		if (!receiveChanges(images))
 			return m_me->getScore();
 
-		//draw(w);
+		draw(w);
 	}
 
 
@@ -142,42 +142,56 @@ bool Game::updateMove(float speed)
 }
 //-----------------------------------------------
 void Game::move(float speed) {
-	sf::Vector2u s{ unsigned(m_me->getCenter().x / SQUARE) ,unsigned(m_me->getCenter().y / SQUARE) };
-	//std::cout << 's'<<s.x << " " << s.y << '\n';
-	auto d = bfs(m_squares[s.x][s.y]);
-	//std::cout << 'd'<<direction->_ver.x << " " << direction->_ver.y << '\n';
-	if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE] == m_squares[s.x][s.y]->_up)m_me->move(0, speed*MOVE);
-	if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE] == m_squares[s.x][s.y]->_down)m_me->move(0, -speed*MOVE);
-	if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE] == m_squares[s.x][s.y]->_left)m_me->move(-speed*MOVE, 0);
-	if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE] == m_squares[s.x][s.y]->_right)m_me->move(speed*MOVE, 0);
-	//std::cout << m_me->getCenter().x<<" "<< m_me->getCenter().y<<'\n';
-	clear();
+	sf::Vector2u ss{ unsigned(m_me->getCenter().x) % SQUARE ,unsigned(m_me->getCenter().y) % SQUARE };
+	sf::Vector2u s{ unsigned((m_me->getCenter().x + float(ss.x)) / SQUARE) ,unsigned((m_me->getCenter().y + float(ss.y)) / SQUARE) };
+
+	static std::stack<sq> dir;
+	if (dir.empty()) {
+		for (int i = 0; i < 600; i++)
+			for (int j = 0; j < 600; j++)
+				m_squares[i][j]->_visited = false;
+
+		//if (m_squares[i][j]->_visited)
+			//std::cout << "fuck\n";
+		dir = bfs(m_squares[s.x][s.y]);
+		if (dir.empty())
+			return;
+		speed = TimeClass::instance().RestartClock();
+	}
+	speed = TimeClass::instance().RestartClock();
+
+	auto d = dir.top();
+	//d->_parent = nullptr;
+	//d->_visited = false;
+	dir.pop();
+
+	if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x > m_squares[s.x][s.y]->_ver.x) m_me->move(MOVE*speed, 0);
+	else if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x < m_squares[s.x][s.y]->_ver.x)m_me->move(-MOVE*speed, 0);
+	else if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y < m_squares[s.x][s.y]->_ver.y)m_me->move(0, -MOVE*speed);
+	else if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y > m_squares[s.x][s.y]->_ver.y)m_me->move(0, MOVE*speed);
+
+
 
 }
 //===================== BFS ==================================
-sq Game::bfs(sq square) {
+std::stack<sq> Game::bfs(sq square) {
 	std::queue<sq> curr;//the current nodes that are taken care of
 	curr.push(square);
 	square->_visited = true;
-	square->_parent;
+	square->_parent = nullptr;
 	std::set<sf::Uint32> intersection;
-	//for (auto i = m_objectsOnBoard.begin(); i != m_objectsOnBoard.end(); i++)
-	//	intersection.emplace(i->first);
+
+
 	while (!curr.empty()) {
 		auto& tempC = curr.front();
-		//	std::cout << tempC->_ver.x << " " << tempC->_ver.y << '\n';
 		auto intersection = m_objectsOnBoard.colliding(pair(tempC->limitsLower(FOOD_RADIUS), tempC->limitsUpper(FOOD_RADIUS)));
-		//if (!intersection.empty())
-	//		std::cout << "ss\n";
 		if (safeSquare(intersection, isFood, *tempC)) {
-			auto t = tempC->findParent(square);
-		//	while (!curr.empty()) {
-		//		curr.front()->clear();
-		//		curr.front()->_visited = false;
-		//		curr.pop();
-		//	}
-		//	square->_visited = false;
-			return t;
+			curr.pop();
+			//	while (!curr.empty()) {
+					//clear(square,curr.front());
+				//	curr.pop();
+				//}
+			return tempC->findParent(square);
 		}
 		if (tempC->_down->update(tempC, (*this)))curr.push(std::ref(tempC->_down));
 		if (tempC->_right->update(tempC, (*this)))curr.push(std::ref(tempC->_right));
@@ -186,33 +200,29 @@ sq Game::bfs(sq square) {
 		curr.pop();
 	}
 
-	return square;
+	//return square;
 }
 //=================================================================
-void Game::clear() {
-	//if (!this && !_parent && !_visited)
-	//	return;
-	////*this = *_parent;
-	//*this = *_parent;
-	//clear();
-	//_visited = false;
-	//_parent = nullptr;
-	for(size_t i=0;i<m_squares.size();i++)
-		for (size_t j = 0; j < m_squares.size(); j++)
-		{
-			m_squares[i][j]->_parent = nullptr;
-			m_squares[i][j]->_visited = false;
-		}
+void Game::clear(const sq& root, sq& curr) {
 
+	auto stack = curr->findParent(root);
+	stack.push(std::ref(curr));
+	while (!stack.empty())
+	{
+		stack.top()->_parent = nullptr;
+		stack.top()->_visited = false;
+		stack.pop();
+	}
 }
 //==============================================================
-sq Square::findParent(const sq& root) {
-	while (_parent && _parent->_ver != root->_ver) {
-		_visited = false;
-		*this = *_parent;
+std::stack<sq> Square::findParent(const sq& root) {
+	std::stack<sq> stack;
+	_visited = false;
+	while (_parent && _parent != root) {
+		stack.push(std::ref(_parent));
+		_parent = _parent->_parent;
 	}
-	return std::make_shared<Square>(this->_ver);
-	//_parent = nullptr;
+	return stack;
 }
 //======================================================
 bool Square::update(sq& parent, const Game& game) {
@@ -220,29 +230,31 @@ bool Square::update(sq& parent, const Game& game) {
 		return false;
 
 	auto intersection = game.getObjectsOnBoard().colliding(pair(limitsLower(BOMB_RADIUS), limitsUpper(BOMB_RADIUS)));
-	if (game.safeSquare(intersection, isBomb, (*this)))
+	if (game.safeSquare(intersection, isBomb, (*this))) {
+		_visited = true;
 		return false;
+	}
 
 	_parent = parent;
 	_visited = true;
 	return true;
 }
 //=====================================================================================
-
-//=================================================================
 bool Square::collide(Circle* c)const {
-	//int a;
-	//std::cout << c->getCenter().x << " " << c->getCenter().y << '\n';
-//	if(c->getCenter(), _ver)
-	//std::cout << _ver.x << " " << _ver.y << '\n';
-	//return c->getGlobalBounds().contains(_ver);
-	return (distance(c->getCenter(), _ver) < c->getRadius()
-		&& distance(c->getCenter(), _ver + sf::Vector2f{ 0,float(SQUARE) }) < c->getRadius()
-		&& distance(c->getCenter(), _ver + sf::Vector2f{ float(SQUARE),0 }) < c->getRadius()
-		&& distance(c->getCenter(), _ver + sf::Vector2f{ float(SQUARE),float(SQUARE) }) < c->getRadius());
-	//	return true;
-		//return true;
+	return (c->getGlobalBounds().contains(_ver)
+		&& c->getGlobalBounds().contains( _ver + sf::Vector2f{ 0,float(SQUARE) })
+		&& c->getGlobalBounds().contains(_ver + sf::Vector2f{ float(SQUARE),0 })
+		&& c->getGlobalBounds().contains(_ver + sf::Vector2f{ float(SQUARE),float(SQUARE) }));
+
 }
+//=================================================================
+//bool Square::collide(Circle* c)const {
+//	return (distance(c->getCenter(), _ver) < c->getRadius()
+//		&& distance(c->getCenter(), _ver + sf::Vector2f{ 0,float(SQUARE) }) < c->getRadius()
+//		&& distance(c->getCenter(), _ver + sf::Vector2f{ float(SQUARE),0 }) < c->getRadius()
+//		&& distance(c->getCenter(), _ver + sf::Vector2f{ float(SQUARE),float(SQUARE) }) < c->getRadius());
+//
+//}
 //====================================================================================
 //===========================      RECEIVE DATA      =================================
 //====================================================================================
@@ -250,9 +262,6 @@ bool Square::collide(Circle* c)const {
 bool Game::receiveChanges(const Images &images)
 {
 	sf::Packet packet;
-
-	static int receiv = 0;
-	//std::cout << "receive\n";
 
 	m_socket.receive(packet);
 

@@ -4,6 +4,8 @@
 #include <memory>
 #include <unordered_map>
 #include <set>
+#include <stack>
+
 #include "Circle.h"
 const unsigned SQUARE = 5;
 
@@ -24,7 +26,7 @@ struct Square {
 public:
 	bool update(sq&, const Game&);
 	//std::set<sf::Uint32> playerOnSquare(const Game&);
-	sq findParent(const sq&);
+	std::stack<sq> findParent(const sq&);
 	bool Square::collide(Circle* c)const;
 	void clear();
 	sf::Vector2f limitsLower(const float RADIUS) const { return{ _ver.x - RADIUS - SQUARE , _ver.y - RADIUS - SQUARE }; }
