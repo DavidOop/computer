@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <Windows.h>
+#include <mutex>
 #include <queue>
 //====================================================================================
 //================================ CONSTRUCTOR =======================================
@@ -12,12 +13,12 @@ Game::Game(const Images &images, const Fonts &fonts, Uint32 image_id, sf::View& 
 	m_background(images[int(BACKGROUND)]),
 	m_view(view)
 {
-	//if (m_socket.connect(sf::IpAddress::LocalHost, 5555) != sf::TcpSocket::Done)
-	if (m_socket.connect("10.2.16.95", 5555) != sf::TcpSocket::Done)
+	if (m_socket.connect(sf::IpAddress::LocalHost, 5555) != sf::TcpSocket::Done)
+		//if (m_socket.connect("10.2.16.95", 5555) != sf::TcpSocket::Done)
 		std::cout << "no connecting\n";
 	setSquare();
 	sf::Packet packet;
-	packet << image_id<<"computer"; //שליחה לשרת של התמונה שלי
+	packet << image_id << "computer"; //שליחה לשרת של התמונה שלי
 	if (m_socket.send(packet) != sf::TcpSocket::Done)
 		std::cout << "no sending image\n";
 
@@ -48,7 +49,7 @@ void Game::receive(const Images &images, const Fonts &fonts)
 			else if (temp.first >= PLAYER_LOWER && temp.first <= PLAYER_UPPER)//???????????????????????
 			{
 				sf::String s;
-				packet >> radius >> image>>s;
+				packet >> radius >> image >> s;
 				m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[image], fonts[SETTINGS], radius, temp.second));
 			}
 		}
@@ -128,35 +129,66 @@ void Game::updateMove(float speed)
 
 	m_receive = false;
 }
+//===============================================================
+bool Game::safe(sf::Vector2f m) {
+	m_me->move(m.x, m.y);
+	auto inter = m_objectsOnBoard.colliding(m_me->getCenter(), m_me->getRadius());
+	for (auto it : inter) //מחיקה של אוכל ופצצות והוספה לוקטור
+		if (isBomb(it) && m_me->circlesCollide(m_objectsOnBoard[it].get())) {
+			m_me->move(-m.x, -m.y);
+			return false;
+		}
+	return true;
+}
+std::mutex mu;
+std::condition_variable cv;
+//========================================================
+void clearS(std::vector<std::vector<sq>>& squares) {
+	while (true) {
+		{
+			std::unique_lock<std::mutex> l(mu);
+			cv.wait(l);
+			for (int i = 0; i < squares.size(); i++)
+				for (int j = 0; j < squares.size(); j++)
+					squares[i][j]->_visited = false;
+		}
+	}
+}
+
 //-----------------------------------------------
 void Game::move(float speed) {
 	sf::Vector2u ss{ unsigned(m_me->getCenter().x) % SQUARE ,unsigned(m_me->getCenter().y) % SQUARE };
 	sf::Vector2u s{ unsigned((m_me->getCenter().x + float(ss.x)) / SQUARE) ,unsigned((m_me->getCenter().y + float(ss.y)) / SQUARE) };
-
+	static std::thread th(clearS, m_squares);
+	//static std::thread th;
 	static std::stack<sq> dir;
 	if (dir.empty()) {
-		for (int i = 0; i < 600; i++)
-			for (int j = 0; j < 600; j++)
-				m_squares[i][j]->_visited = false;
-
-		//if (m_squares[i][j]->_visited)
-			//std::cout << "fuck\n";
-		dir = bfs(m_squares[s.x][s.y]);
-		if (dir.empty())
-			return;
+		{
+			std::lock_guard<std::mutex> l(mu);
+			dir = bfs(m_squares[s.x][s.y]);
+			if (dir.empty())
+				return;
+		}
+		cv.notify_one();
 		speed = TimeClass::instance().RestartClock();
 	}
-	speed = TimeClass::instance().RestartClock();
 
 	auto d = dir.top();
-	//d->_parent = nullptr;
-	//d->_visited = false;
 	dir.pop();
 
-	if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x > m_squares[s.x][s.y]->_ver.x) m_me->move(MOVE*speed, 0);
-	else if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x < m_squares[s.x][s.y]->_ver.x)m_me->move(-MOVE*speed, 0);
-	else if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y < m_squares[s.x][s.y]->_ver.y)m_me->move(0, -MOVE*speed);
-	else if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y > m_squares[s.x][s.y]->_ver.y)m_me->move(0, MOVE*speed);
+	float mo = MOVE*TimeClass::instance().RestartClock();
+	if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x > m_squares[s.x][s.y]->_ver.x)
+		if (safe({ mo , 0 }))
+			return;
+	if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x < m_squares[s.x][s.y]->_ver.x)
+		if (safe({ -mo, 0 }))
+			return;
+	if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y < m_squares[s.x][s.y]->_ver.y)
+		if (safe({ 0, -mo }))
+			return;
+	if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y > m_squares[s.x][s.y]->_ver.y)
+		if (safe({ 0, mo }))
+			return;
 
 
 
@@ -228,21 +260,21 @@ bool Square::update(sq& parent, const Game& game) {
 	return true;
 }
 //=====================================================================================
-bool Square::collide(Circle* c)const {
-	return (c->getGlobalBounds().contains(_ver)
-		&& c->getGlobalBounds().contains(_ver + sf::Vector2f{ 0,float(SQUARE) })
-		&& c->getGlobalBounds().contains(_ver + sf::Vector2f{ float(SQUARE),0 })
-		&& c->getGlobalBounds().contains(_ver + sf::Vector2f{ float(SQUARE),float(SQUARE) }));
-
-}
-//=================================================================
 //bool Square::collide(Circle* c)const {
-//	return (distance(c->getCenter(), _ver) < c->getRadius()
-//		&& distance(c->getCenter(), _ver + sf::Vector2f{ 0,float(SQUARE) }) < c->getRadius()
-//		&& distance(c->getCenter(), _ver + sf::Vector2f{ float(SQUARE),0 }) < c->getRadius()
-//		&& distance(c->getCenter(), _ver + sf::Vector2f{ float(SQUARE),float(SQUARE) }) < c->getRadius());
+//	return (c->getGlobalBounds().contains(_ver)
+//		|| c->getGlobalBounds().contains(_ver + sf::Vector2f{ 0,float(SQUARE) })
+//		|| c->getGlobalBounds().contains(_ver + sf::Vector2f{ float(SQUARE),0 })
+//		|| c->getGlobalBounds().contains(_ver + sf::Vector2f{ float(SQUARE),float(SQUARE) }));
 //
 //}
+//=================================================================
+bool Square::collide(Circle* c)const {
+	return (distance(c->getCenter(), _ver) < c->getRadius()
+		&& distance(c->getCenter(), _ver + sf::Vector2f{ 0,float(SQUARE) }) < c->getRadius()
+		&& distance(c->getCenter(), _ver + sf::Vector2f{ float(SQUARE),0 }) < c->getRadius()
+		&& distance(c->getCenter(), _ver + sf::Vector2f{ float(SQUARE),float(SQUARE) }) < c->getRadius());
+
+}
 //====================================================================================
 //===========================      RECEIVE DATA      =================================
 //====================================================================================
@@ -285,7 +317,7 @@ void Game::addPlayer(const std::pair<Uint32, sf::Vector2f> &temp, sf::Packet &pa
 {
 	Uint32 image;
 	sf::String s;
-	packet >> image>>s;
+	packet >> image >> s;
 	m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[image], fonts[SETTINGS], NEW_PLAYER, temp.second));
 }
 //------------------------------------------------------------------------------------
@@ -299,8 +331,6 @@ void deleteDeadPlayer(std::unordered_map<Uint32, std::unique_ptr<OtherPlayers>>&
 //====================================================================================
 void Game::setView(sf::RenderWindow &w) const
 {
-	/*sf::View view;
-	view.reset(sf::FloatRect{ 0,0,float(SCREEN_WIDTH),float(SCREEN_HEIGHT) });*/
 	sf::Vector2f pos{ float(SCREEN_WIDTH) / 2 , float(SCREEN_HEIGHT) / 2 };
 
 	if (m_me->getCenter().x > SCREEN_WIDTH / 2)

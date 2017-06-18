@@ -4,7 +4,7 @@
 #include <memory>
 #include <map>
 #include <unordered_map>
-
+#include <thread>
 const float MOVE = 400;
 const sf::Vector2f BOARD_SIZE{ 3000.f,3000.f };
 
@@ -44,6 +44,8 @@ private:
 	void setSquare();
 	std::vector<std::vector<sq>> m_squares;
 	std::stack<sq> bfs(sq square);
+	bool safe(sf::Vector2f m);
+	//void actMove(const sq&);
 };
 //--------------------------------------------------------------------------
 template <typename T>
