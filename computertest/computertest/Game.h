@@ -12,14 +12,12 @@ const sf::Vector2f BOARD_SIZE{ 3000.f,3000.f };
 class Game
 {
 public:
-	//Game(const Images &images, Uint32 image, sf::View&);
 	Game(const Images &images, const Fonts &fonts, Uint32 image_id, sf::View& view, const sf::String &name);
 	void receive(const Images &images, const Fonts &fonts);
 	unsigned play(sf::RenderWindow &w, const Images &images, const Fonts &fonts);
 	void draw(sf::RenderWindow &w) const;
 	void setView(sf::RenderWindow &w) const;
 	const Maps& getObjectsOnBoard()const { return m_objectsOnBoard; }
-	//Maps& getObjectsOnBoard() { return m_objectsOnBoard; }
 	const auto& getOtherPlayers()const { return m_players; }
 	void addPlayer(const std::pair<Uint32, sf::Vector2f> &temp, sf::Packet &packet, const Images &images, const Fonts &fonts);
 
