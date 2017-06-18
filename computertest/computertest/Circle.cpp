@@ -5,7 +5,7 @@
 //====================================================================================
 //===========================      CONSTRACTORS      =================================
 //====================================================================================
-MyPlayer::MyPlayer(Uint32 id, const sf::Texture &image, sf::Vector2f position)
+MyPlayer::MyPlayer(Uint32 id, const sf::Texture &image, const sf::Font &font, sf::Vector2f position /*= { 0.f,0.f }*/, const sf::String name)
 	:Player(id)
 {
 	setRadius(NEW_PLAYER);
@@ -21,7 +21,8 @@ MyPlayer::MyPlayer()
 	setCenter({ NEW_PLAYER ,NEW_PLAYER });
 }
 //======================================================================================
-OtherPlayers::OtherPlayers(Uint32 id, const sf::Texture &image, float radius, sf::Vector2f position)
+//OtherPlayers::OtherPlayers(Uint32 id, const sf::Texture &image, float radius, sf::Vector2f position)
+OtherPlayers::OtherPlayers(Uint32 id, const sf::Texture &image, const sf::Font &font, float radius, sf::Vector2f position, const sf::String &name )
 	:Player(id)
 {
 	setRadius(radius);
@@ -30,23 +31,42 @@ OtherPlayers::OtherPlayers(Uint32 id, const sf::Texture &image, float radius, sf
 	setTexture(&image);
 }
 //======================================================================================
-Food::Food(Uint32 id, sf::Vector2f position) :FoodAndBomb(id, position)
+//Food::Food(Uint32 id, sf::Vector2f position) :FoodAndBomb(id, position)
+//{
+//	setRadius(FOOD_RADIUS);
+//	setCenter(position);
+//	setOrigin(FOOD_RADIUS, FOOD_RADIUS);
+//	//	setFillColor(sf::Color::Yellow);//?????????????????
+//	setFillColor(sf::Color(rand() % 155 + 150, rand() % 155 + 150, rand() % 155 + 150));//?????????????????
+//	setOutlineColor(sf::Color(getFillColor().r, getFillColor().g, getFillColor().b, 100));
+//	setOutlineThickness(4);
+//}
+////======================================================================================
+//Bomb::Bomb(Uint32 id, sf::Vector2f position) :FoodAndBomb(id, position)
+//{
+//	setRadius(BOMB_RADIUS);
+//	setCenter(position);
+//	setOrigin(BOMB_RADIUS, BOMB_RADIUS);
+//	setFillColor(sf::Color::Red);//?????????????????
+//}
+
+Food::Food(Uint32 id, sf::Vector2f position, const sf::Texture& t) :FoodAndBomb(id, position)
 {
 	setRadius(FOOD_RADIUS);
 	setCenter(position);
 	setOrigin(FOOD_RADIUS, FOOD_RADIUS);
-	//	setFillColor(sf::Color::Yellow);//?????????????????
 	setFillColor(sf::Color(rand() % 155 + 150, rand() % 155 + 150, rand() % 155 + 150));//?????????????????
-	setOutlineColor(sf::Color(getFillColor().r, getFillColor().g, getFillColor().b, 100));
-	setOutlineThickness(4);
+																						//setOutlineColor(sf::Color(getFillColor().r, getFillColor().g, getFillColor().b, 100));
+																						//setOutlineThickness(4);
+	setTexture(&t);
 }
 //======================================================================================
-Bomb::Bomb(Uint32 id, sf::Vector2f position) :FoodAndBomb(id, position)
+Bomb::Bomb(Uint32 id, sf::Vector2f position, const sf::Texture& tex) :FoodAndBomb(id, position)
 {
 	setRadius(BOMB_RADIUS);
 	setCenter(position);
 	setOrigin(BOMB_RADIUS, BOMB_RADIUS);
-	setFillColor(sf::Color::Red);//?????????????????
+	setTexture(&tex);
 }
 
 //====================================================================================

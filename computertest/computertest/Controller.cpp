@@ -83,7 +83,8 @@ void Controller::MenuEvents(sf::RenderWindow& window) {
 			play(window);//if game is over (no levels left)
 
 		window.clear();
-		window.draw(m_images[BACKGROUND1]);//background image of openning screen
+		//window.draw(m_images[BACKGROUND1]);//background image of openning screen
+		window.draw(m_images.getImage(BACKGROUND1));//background image of openning screen
 		window.draw(m_Menus.getRec());// background menu rectangle
 		draw(window, m_Menus);		  // buttons of menu
 		m_screeninfo[(*m_Menus.getIteratorToCurrentPressed())->getPlace()]->display(window);
@@ -95,8 +96,8 @@ void Controller::MenuEvents(sf::RenderWindow& window) {
 void Controller::play(sf::RenderWindow& window) {
 	sf::View view(sf::FloatRect{ 0, 0, float(SCREEN_WIDTH),float(SCREEN_HEIGHT) });
 	auto it = dynamic_cast<SettingsScreen*>(m_screeninfo[SETTINGS_SCREEN].get());
-	Game game{ m_images,/* m_fonts,*/it->getSelectedImage() + 2 /*,it->getName() */ ,view };
-	auto score = game.play(window, m_images); //run current level
+	Game game{ m_images, m_fonts,it->getSelectedImage() + 2  ,view,it->getName()  };
+	auto score = game.play(window, m_images, m_fonts); //run current level
 	sf::View view1(sf::FloatRect{ 0, 0, float(SCREEN_WIDTH),float(SCREEN_HEIGHT) });
 
 	view1.setCenter(float(SCREEN_WIDTH) / 2, float(SCREEN_HEIGHT) / 2);

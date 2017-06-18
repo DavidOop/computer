@@ -55,7 +55,7 @@ public:
 	using std::unordered_map<Uint32, std::unique_ptr<FoodAndBomb>>::end;
 	using std::unordered_map<Uint32, std::unique_ptr<FoodAndBomb>>::find;
 
-	void insert(const std::pair<Uint32, sf::Vector2f> &);
+	void insert(const std::pair<Uint32, sf::Vector2f> &, const Images &images);
 	void eraseFromData(sf::Uint32);
 	std::set<sf::Uint32> Maps::colliding(const pair& ver)const;
 	std::set<Uint32> Maps::colliding(const Vector2f& ver, const float radius);
