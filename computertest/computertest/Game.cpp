@@ -142,6 +142,9 @@ bool Game::safe(sf::Vector2f m) {
 }
 std::mutex mu;
 std::condition_variable cv;
+bool d = false;
+bool dd = false;
+
 //========================================================
 void clearS(std::vector<std::vector<sq>>& squares) {
 	while (true) {
@@ -164,6 +167,7 @@ void Game::move(float speed) {
 	static std::stack<sq> dir;
 	if (dir.empty()) {
 		{
+		//	clearS(m_squares);
 			std::lock_guard<std::mutex> l(mu);
 			dir = bfs(m_squares[s.x][s.y]);
 			if (dir.empty())
@@ -193,70 +197,102 @@ void Game::move(float speed) {
 
 
 }
-//===================== BFS ==================================
-std::stack<sq> Game::bfs(sq square) {
-	std::queue<sq> curr;//the current nodes that are taken care of
-	curr.push(square);
-	square->_visited = true;
-	square->_parent = nullptr;
-	std::set<sf::Uint32> intersection;
-	std::stack<sq> a;
+//=====================================================================
+void Game::checkDir(std::stack<sq>& stack, const sq& squ) {
+	std::cout << "start th\n";
+	//{
+	//	std::unique_lock<std::mutex> start(_mu_stack_begin);
+	//	_cv_stack.wait(start);
+	//}
+	while (!dd);
+	std::cout << "end th\n";
 
+	std::queue<sq> curr;//the current nodes that are taken care of
+	curr.push(squ);
+	squ->_visited = true;
+	squ->_parent = nullptr;
+	std::set<sf::Uint32> intersection;
 	while (!curr.empty()) {
 		auto& tempC = curr.front();
+		std::unique_lock<std::mutex> lock(tempC->_mu);
 		auto intersection = m_objectsOnBoard.colliding(pair(tempC->limitsLower(FOOD_RADIUS), tempC->limitsUpper(FOOD_RADIUS)));
 		if (safeSquare(intersection, isFood, *tempC)) {
-			curr.pop();
-			//	while (!curr.empty()) {
-					//clear(square,curr.front());
-				//	curr.pop();
-				//}
-			return tempC->findParent(square);
+			{
+				std::lock_guard<std::mutex> upd(_mu_stack_end);
+				if (!stack.empty())return;
+				tempC->findParent(squ, std::ref(stack));
+				stack.push(std::ref(tempC));
+				d = true;
+			}
+			//_cv_stack.notify_one();
+			return;
 		}
 		if (tempC->_down->update(tempC, (*this)))curr.push(std::ref(tempC->_down));
 		if (tempC->_right->update(tempC, (*this)))curr.push(std::ref(tempC->_right));
 		if (tempC->_up->update(tempC, (*this)))curr.push(std::ref(tempC->_up));
 		if (tempC->_left->update(tempC, (*this)))curr.push(std::ref(tempC->_left));
 		curr.pop();
-	}
-
-	return a;
-}
-//=================================================================
-void Game::clear(const sq& root, sq& curr) {
-
-	auto stack = curr->findParent(root);
-	stack.push(std::ref(curr));
-	while (!stack.empty())
-	{
-		stack.top()->_parent = nullptr;
-		stack.top()->_visited = false;
-		stack.pop();
+		if (!dd)return;
 	}
 }
-//==============================================================
-std::stack<sq> Square::findParent(const sq& root) {
+
+//===================== BFS ==================================
+std::stack<sq> Game::bfs(sq square) {
+	square->_visited = true;
+	square->_parent = nullptr;
 	std::stack<sq> stack;
+	std::vector<sq> goTo{ square->_down , square->_right,square->_up,square->_left };
+	std::vector<std::thread> threads;
+	//{
+		//std::lock_guard<std::mutex> start(_mu_stack_begin);
+		dd = false;
+		for (auto& th : goTo)
+			threads.push_back(makeThread(std::ref(stack), th));
+	//	Sleep(1);
+	//}
+	dd = true;
+	//_cv_stack.notify_all();
+	while (!d);
+	dd = false;
+
+	d = false;
+	//std::unique_lock<std::mutex> end(_mu_stack_end);
+	//_cv_stack.wait(end);
+	for (auto th = threads.begin(); th != threads.end();++th)
+		th->join();
+		//th = threads.erase(th);
+
+	return stack;
+}
+//============================================================
+void Square::findParent(const sq& root, std::stack<sq>& stack) {
+
 	_visited = false;
 	while (_parent && _parent != root) {
 		stack.push(std::ref(_parent));
 		_parent = _parent->_parent;
 	}
-	return stack;
 }
 //======================================================
 bool Square::update(sq& parent, const Game& game) {
-	if (!this || _visited)
+	if (!this ||!_mu.try_lock())
 		return false;
+
+	if (_visited) {
+		_mu.unlock();
+		return false;
+	}
 
 	auto intersection = game.getObjectsOnBoard().colliding(pair(limitsLower(BOMB_RADIUS), limitsUpper(BOMB_RADIUS)));
 	if (game.safeSquare(intersection, isBomb, (*this))) {
 		_visited = true;
+		_mu.unlock();
 		return false;
 	}
 
 	_parent = parent;
 	_visited = true;
+	_mu.unlock();
 	return true;
 }
 //=====================================================================================

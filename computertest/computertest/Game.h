@@ -24,14 +24,14 @@ public:
 	template<typename T>
 	bool safeSquare(const std::set<sf::Uint32>&, T, const Square&)const;
 	//------------------------------
-	auto findInMap(sf::Uint32 key)const{ return m_objectsOnBoard.find(key); }
+	auto findInMap(sf::Uint32 key)const { return m_objectsOnBoard.find(key); }
 private:
 	void updateMove(float);
 	void receiveChanges(const Images &images, const Fonts &fonts);
 	//-----------------------------------------
 	void Game::move(float);
 	float Game::direction(const pair& ver);
-	
+
 	Maps m_objectsOnBoard;
 	std::unordered_map<Uint32, std::unique_ptr<OtherPlayers>> m_players;
 	sf::Sprite m_background;
@@ -46,6 +46,12 @@ private:
 	std::stack<sq> bfs(sq square);
 	bool safe(sf::Vector2f m);
 	//void actMove(const sq&);
+	void Game::checkDir(std::stack<sq>& curr, const sq&);
+	std::thread makeThread(std::stack<sq>& curr, const sq& squ) { return std::thread([&] {checkDir(std::ref(curr),squ); }); }
+	//void Game::checkDir();
+	std::mutex _mu_stack_begin;
+	std::mutex _mu_stack_end;
+	std::condition_variable _cv_stack;
 };
 //--------------------------------------------------------------------------
 template <typename T>

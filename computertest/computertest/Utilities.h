@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <set>
 #include <stack>
-
+#include <mutex>
 #include "Circle.h"
 const unsigned SQUARE = 5;
 
@@ -23,10 +23,12 @@ struct Square {
 
 	sq _parent{};
 	bool _visited{ false };
+
+	std::mutex _mu;
 public:
 	bool update(sq&, const Game&);
 	//std::set<sf::Uint32> playerOnSquare(const Game&);
-	std::stack<sq> findParent(const sq&);
+	void findParent(const sq&, std::stack<sq>& stack);
 	bool Square::collide(Circle* c)const;
 	void clear();
 	sf::Vector2f limitsLower(const float RADIUS) const { return{ _ver.x - RADIUS - SQUARE , _ver.y - RADIUS - SQUARE }; }
