@@ -50,7 +50,7 @@ template <typename T>
 bool Game::safeSquare(const std::set<sf::Uint32>& keys, T function, const Square& s)const {
 	for (auto it = keys.begin(); it != keys.end(); ++it) {
 		if (function(*it))
-			if (s.collide(m_objectsOnBoard.find(*it)->second.get()))
+			if (s.collide(m_objectsOnBoard.find(*it)->second.get(),m_me->getRadius()))
 				return true;
 	}
 	return false;

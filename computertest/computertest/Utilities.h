@@ -27,7 +27,7 @@ public:
 	bool update(sq&, const Game&);
 	//std::set<sf::Uint32> playerOnSquare(const Game&);
 	std::stack<sq> findParent(const sq&);
-	bool Square::collide(Circle* c)const;
+	bool Square::collide(Circle* c,float)const;
 	void clear();
 	sf::Vector2f limitsLower(const float RADIUS) const { return{ _ver.x - RADIUS - SQUARE , _ver.y - RADIUS - SQUARE }; }
 	sf::Vector2f limitsUpper(const float RADIUS) const { return{ _ver.x + RADIUS + SQUARE , _ver.y + RADIUS + SQUARE }; }

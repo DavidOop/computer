@@ -12,8 +12,8 @@ Game::Game(const Images &images, const Fonts &fonts, Uint32 image_id, sf::View& 
 	m_background(images[int(BACKGROUND)]),
 	m_view(view)
 {
-	//if (m_socket.connect(sf::IpAddress::LocalHost, 5555) != sf::TcpSocket::Done)
-	if (m_socket.connect("10.2.16.95", 5555) != sf::TcpSocket::Done)
+	if (m_socket.connect(sf::IpAddress::LocalHost, 5555) != sf::TcpSocket::Done)
+	//if (m_socket.connect("10.2.16.95", 5555) != sf::TcpSocket::Done)
 		std::cout << "no connecting\n";
 	setSquare();
 	sf::Packet packet;
@@ -135,12 +135,13 @@ void Game::move(float speed) {
 
 	static std::stack<sq> dir;
 	if (dir.empty()) {
-		for (int i = 0; i < 600; i++)
-			for (int j = 0; j < 600; j++)
-				m_squares[i][j]->_visited = false;
+	//	for (auto& itR = m_squares.begin(); itR != m_squares.end(); ++itR)
+	//		for (auto& it = itR->begin(); it != itR->end(); ++it)
+	//			(*it)->_visited = false;
+for (int i = 0; i < 600; i++)
+	for (int j = 0; j < 600; j++)
+		m_squares[i][j]->_visited = false;
 
-		//if (m_squares[i][j]->_visited)
-			//std::cout << "fuck\n";
 		dir = bfs(m_squares[s.x][s.y]);
 		if (dir.empty())
 			return;
@@ -149,14 +150,12 @@ void Game::move(float speed) {
 	speed = TimeClass::instance().RestartClock();
 
 	auto d = dir.top();
-	//d->_parent = nullptr;
-	//d->_visited = false;
 	dir.pop();
 
 	if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x > m_squares[s.x][s.y]->_ver.x) m_me->move(MOVE*speed, 0);
-	else if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x < m_squares[s.x][s.y]->_ver.x)m_me->move(-MOVE*speed, 0);
-	else if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y < m_squares[s.x][s.y]->_ver.y)m_me->move(0, -MOVE*speed);
-	else if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y > m_squares[s.x][s.y]->_ver.y)m_me->move(0, MOVE*speed);
+	 if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x < m_squares[s.x][s.y]->_ver.x)m_me->move(-MOVE*speed, 0);
+	 if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y < m_squares[s.x][s.y]->_ver.y)m_me->move(0, -MOVE*speed);
+	 if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y > m_squares[s.x][s.y]->_ver.y)m_me->move(0, MOVE*speed);
 
 
 
@@ -169,25 +168,30 @@ std::stack<sq> Game::bfs(sq square) {
 	square->_parent = nullptr;
 	std::set<sf::Uint32> intersection;
 	std::stack<sq> a;
+	std::vector<sq> clean;
+	clean.push_back(square);
 
 	while (!curr.empty()) {
 		auto& tempC = curr.front();
-		auto intersection = m_objectsOnBoard.colliding(pair(tempC->limitsLower(FOOD_RADIUS), tempC->limitsUpper(FOOD_RADIUS)));
+		auto intersection = m_objectsOnBoard.colliding(pair(tempC->limitsLower(FOOD_RADIUS+ m_me->getRadius()), tempC->limitsUpper(FOOD_RADIUS + m_me->getRadius())));
 		if (safeSquare(intersection, isFood, *tempC)) {
-			curr.pop();
-			//	while (!curr.empty()) {
-					//clear(square,curr.front());
-				//	curr.pop();
-				//}
+			//curr.pop();
+		/*	for (auto& it = clean.begin(); it != clean.end(); ++it)
+				(*it)->_visited = false;*/
+		//	clean.clear();
 			return tempC->findParent(square);
 		}
-		if (tempC->_down->update(tempC, (*this)))curr.push(std::ref(tempC->_down));
-		if (tempC->_right->update(tempC, (*this)))curr.push(std::ref(tempC->_right));
-		if (tempC->_up->update(tempC, (*this)))curr.push(std::ref(tempC->_up));
-		if (tempC->_left->update(tempC, (*this)))curr.push(std::ref(tempC->_left));
+		if (tempC->_down->update(tempC, (*this))) {
+			curr.push(std::ref(tempC->_down)); clean.push_back(std::ref(tempC->_down));}
+		if (tempC->_right->update(tempC, (*this))){curr.push(std::ref(tempC->_right)); clean.push_back(std::ref(tempC->_right));
+		}
+		if (tempC->_up->update(tempC, (*this))){curr.push(std::ref(tempC->_up)); clean.push_back(std::ref(tempC->_up));
+		}
+		if (tempC->_left->update(tempC, (*this))){curr.push(std::ref(tempC->_left)); clean.push_back(std::ref(tempC->_left));
+		}
 		curr.pop();
 	}
-
+	
 	return a;
 }
 //=================================================================
@@ -228,11 +232,16 @@ bool Square::update(sq& parent, const Game& game) {
 	return true;
 }
 //=====================================================================================
-bool Square::collide(Circle* c)const {
-	return (c->getGlobalBounds().contains(_ver)
-		&& c->getGlobalBounds().contains(_ver + sf::Vector2f{ 0,float(SQUARE) })
-		&& c->getGlobalBounds().contains(_ver + sf::Vector2f{ float(SQUARE),0 })
-		&& c->getGlobalBounds().contains(_ver + sf::Vector2f{ float(SQUARE),float(SQUARE) }));
+bool Square::collide(Circle* c,float r)const {
+	return (c->getGlobalBounds().contains(_ver - sf::Vector2f{ r,0 }));
+	/*return (c->getGlobalBounds().contains(_ver - sf::Vector2f{ r,0 })
+		|| c->getGlobalBounds().contains(_ver - sf::Vector2f{ 0,r })
+		|| c->getGlobalBounds().contains(_ver + sf::Vector2f{ 0,float(SQUARE)+r})
+		|| c->getGlobalBounds().contains(_ver + sf::Vector2f{ -r,float(SQUARE) })
+		|| c->getGlobalBounds().contains(_ver + sf::Vector2f{ float(SQUARE)+r,0 })
+		|| c->getGlobalBounds().contains(_ver + sf::Vector2f{ -float(SQUARE),-r })
+		|| c->getGlobalBounds().contains(_ver + sf::Vector2f{ float(SQUARE),float(SQUARE)+r })
+		|| c->getGlobalBounds().contains(_ver + sf::Vector2f{ float(SQUARE)+r,float(SQUARE) }));*/
 
 }
 //=================================================================

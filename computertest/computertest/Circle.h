@@ -60,7 +60,9 @@ public:
 	void setCenter(Vector2f center) { m_center = center; setPosition({ center.x - getRadius(),center.y - getRadius() }); }
 	void setCenter() { m_center = getPosition() + Vector2f{ getRadius(), getRadius() }; }
 
-	void virtual f() = 0;
+	virtual bool circlesCollide(const Circle* p) const;
+
+	//void virtual f() = 0;
 
 protected:
 	Uint32 m_id;
@@ -77,7 +79,6 @@ public:
 	void collision(std::vector<Uint32> &deleted, Maps &objectsOnBoard, std::unordered_map<Uint32, std::unique_ptr<OtherPlayers>>& players, Player *me);
 	void checkPlayers(std::vector<Uint32> &deleted, std::unordered_map<Uint32, std::unique_ptr<OtherPlayers>>& players, Player *me);
 	void checkFoodAndBomb(std::vector<Uint32> &deleted, Maps &objectsOnBoard);
-	bool circlesCollide(const Circle* p) const;
 
 	void newRadius(Circle *c);
 	void move(float x, float y);
@@ -102,7 +103,7 @@ public:
 	
 	void setId(Uint32 id) { m_id = id; }
 	void setTexture(const sf::Texture &image) { CircleShape::setTexture(&image); }
-	void f() override {} 
+	//void f() override {} 
 };
 //-------------------------------------
 class OtherPlayers :public Player
@@ -111,7 +112,7 @@ public:
 	OtherPlayers(const OtherPlayers& p) :Player(p) {}
 	OtherPlayers(Uint32 id, const sf::Texture &image, const sf::Font &font, float radius, sf::Vector2f position, const sf::String &name = "no name");
 
-	void f() override {}
+	//void f() override {}
 };
 //-------------------------------------
 class FoodAndBomb :public Circle
@@ -127,7 +128,7 @@ public:
 	Food(Uint32 id, sf::Vector2f place, const sf::Texture&);
 	Food(std::pair<Uint32, sf::Vector2f> temp, const sf::Texture& t) :Food(temp.first, temp.second, t) {}
 
-	void f() override {}
+	//void f() override {}
 };
 //-------------------------------------
 class Bomb :public FoodAndBomb
@@ -136,7 +137,7 @@ public:
 	Bomb(Uint32 id, sf::Vector2f place, const sf::Texture&);
 	Bomb(std::pair<Uint32, sf::Vector2f> temp, const sf::Texture& t) :Bomb(temp.first, temp.second, t) {}
 
-	void f() override {}
+	//void f() override {}
 };
 //=============================================================================================
 float distance(const sf::Vector2f& p1, const sf::Vector2f& p2);
