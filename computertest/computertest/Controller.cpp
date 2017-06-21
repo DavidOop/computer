@@ -47,10 +47,6 @@ int main() {
 **********************************************************************************************/
 //===================== constructor ===================================
 Controller::Controller() :m_fonts(), m_Menus(m_fonts) {
-	//m_music.openFromFile("sounds/menu.ogg");
-	//m_music.setLoop(true);
-	//m_music.play();
-	makeScreen();
 }
 /************************************************************************
 					Controller running functions
@@ -75,82 +71,14 @@ void Controller::run() {
 }
 //======================== while window is open =================================
 void Controller::MenuEvents(sf::RenderWindow& window) {
+	while(true)
+	play(window);//if game is over (no levels left)
 
-	while (window.isOpen())
-	{
-		events(window);  //get event from user
-		if (m_Menus[START_GAME]->getPressed())
-			play(window);//if game is over (no levels left)
-
-		window.clear();
-		//window.draw(m_images[BACKGROUND1]);//background image of openning screen
-		window.draw(m_images.getImage(BACKGROUND1));//background image of openning screen
-		window.draw(m_Menus.getRec());// background menu rectangle
-		draw(window, m_Menus);		  // buttons of menu
-		m_screeninfo[(*m_Menus.getIteratorToCurrentPressed())->getPlace()]->display(window);
-		window.display();
-	}
 }
 //========================= start playing ====================================
 //if user pressed "Start"
 void Controller::play(sf::RenderWindow& window) {
 	sf::View view(sf::FloatRect{ 0, 0, float(SCREEN_WIDTH),float(SCREEN_HEIGHT) });
-	auto it = dynamic_cast<SettingsScreen*>(m_screeninfo[SETTINGS_SCREEN].get());
-	Game game{ m_images, m_fonts,it->getSelectedImage() + 2  ,view,it->getName()  };
+	Game game{ m_images, m_fonts,sf::Uint32(rand()%11)  ,view,"computer"  };
 	auto score = game.play(window, m_images, m_fonts); //run current level
-	sf::View view1(sf::FloatRect{ 0, 0, float(SCREEN_WIDTH),float(SCREEN_HEIGHT) });
-
-	view1.setCenter(float(SCREEN_WIDTH) / 2, float(SCREEN_HEIGHT) / 2);
-	//when the level is over resize the window to half screen
-	/*display score screen*/
-	//endLevelScreen(window, score);
-	window.setView(view1);
-	//sets the start boolean to be false
-	m_Menus[START_GAME]->setPressed(false);
-
-
 }
-//======================= The events of menu screen ===================================
-void Controller::events(sf::RenderWindow& window) {
-
-	sf::Event event;
-	window.pollEvent(event);
-	static bool pressed{ false };
-	bool settings = (*m_Menus.getIteratorToCurrentPressed())->getPlace() == SETTINGS_SCREEN;
-
-	switch (event.type)
-	{
-	case sf::Event::Closed:
-		window.close();
-		break;
-	case sf::Event::MouseButtonPressed:
-		//if it is in setting screen
-		if (settings) {
-			//if pressed on name box
-			pressed = dynamic_cast<SettingsScreen*>(m_screeninfo[SETTINGS_SCREEN].get())->pressed({ float(event.mouseButton.x),float(event.mouseButton.y) });
-			m_screeninfo[SETTINGS_SCREEN]->mouseEventButton({ float(event.mouseButton.x),float(event.mouseButton.y) }, true);
-		}
-		m_Menus.mouseEventButton(window.mapPixelToCoords({ event.mouseButton.x, event.mouseButton.y }), true);
-		break;
-	case  sf::Event::TextEntered:
-		if (pressed)//only if name box was pressed
-			dynamic_cast<SettingsScreen*>(m_screeninfo[SETTINGS_SCREEN].get())->enterName(event);
-		break;
-	case sf::Event::MouseMoved:
-		m_Menus.mouseEventButton(window.mapPixelToCoords({ event.mouseMove.x, event.mouseMove.y }), false);
-		if (settings) m_screeninfo[SETTINGS_SCREEN]->mouseEventButton({ float(event.mouseMove.x),float(event.mouseMove.y) }, false);
-
-		break;
-	}
-
-}
-
-//================================================================================
-void Controller::makeScreen() {
-	m_screeninfo.push_back(std::make_unique<Logo>(m_fonts[fonts::LOGO]));
-	m_screeninfo.push_back(std::make_unique<SettingsScreen>(m_fonts[fonts::SETTINGS], m_images));
-	m_screeninfo.push_back(std::make_unique<HelpScreen>(m_fonts[fonts::HELP], m_Menus.getGlobalBounds().width));
-
-}
-
-//===================================================================================

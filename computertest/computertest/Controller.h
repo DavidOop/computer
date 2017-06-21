@@ -13,7 +13,7 @@ class Controller
 {
 public:
 	Controller();
-	virtual ~Controller() {}
+	~Controller() = default;
 
 	void run();
 	void MenuEvents(sf::RenderWindow&);

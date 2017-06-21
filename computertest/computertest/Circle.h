@@ -59,6 +59,7 @@ public:
 	const Vector2f& getCenter() const { return m_center; }
 	void setCenter(Vector2f center) { m_center = center; setPosition({ center.x - getRadius(),center.y - getRadius() }); }
 	void setCenter() { m_center = getPosition() + Vector2f{ getRadius(), getRadius() }; }
+	bool circlesCollide(const Circle* p) const;
 
 	void virtual f() = 0;
 
@@ -77,7 +78,6 @@ public:
 	void collision(std::vector<Uint32> &deleted, Maps &objectsOnBoard, std::unordered_map<Uint32, std::unique_ptr<OtherPlayers>>& players, Player *me);
 	void checkPlayers(std::vector<Uint32> &deleted, std::unordered_map<Uint32, std::unique_ptr<OtherPlayers>>& players, Player *me);
 	void checkFoodAndBomb(std::vector<Uint32> &deleted, Maps &objectsOnBoard);
-	bool circlesCollide(const Circle* p) const;
 
 	void newRadius(Circle *c);
 	void move(float x, float y);

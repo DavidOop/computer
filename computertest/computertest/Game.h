@@ -30,7 +30,6 @@ private:
 	void receiveChanges(const Images &images, const Fonts &fonts);
 	//-----------------------------------------
 	void Game::move(float);
-	float Game::direction(const pair& ver);
 	
 	Maps m_objectsOnBoard;
 	std::unordered_map<Uint32, std::unique_ptr<OtherPlayers>> m_players;
@@ -40,7 +39,6 @@ private:
 	bool m_receive{ true };
 	sf::TcpSocket m_socket;
 	sf::View& m_view;
-	void Game::clear(const sq& root, sq& curr);
 	void setSquare();
 	std::vector<std::vector<sq>> m_squares;
 	std::stack<sq> bfs(sq square);
@@ -50,7 +48,7 @@ template <typename T>
 bool Game::safeSquare(const std::set<sf::Uint32>& keys, T function, const Square& s)const {
 	for (auto it = keys.begin(); it != keys.end(); ++it) {
 		if (function(*it))
-			if (s.collide(m_objectsOnBoard.find(*it)->second.get()))
+			if (s.collide(m_objectsOnBoard.find(*it)->second.get(),m_me->getRadius()))
 				return true;
 	}
 	return false;

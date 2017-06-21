@@ -72,7 +72,7 @@ float distance(const sf::Vector2f &p1, const sf::Vector2f &p2)
 	return sqrt(temp);
 }
 //-----------------------------------------------------
-bool Player::circlesCollide(const Circle* p) const
+bool Circle::circlesCollide(const Circle* p) const
 {
 	return distance(getCenter(), p->getPosition()) < getRadius() + p->getRadius();
 }
