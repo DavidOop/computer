@@ -144,31 +144,34 @@ std::mutex mu;
 std::condition_variable cv;
 bool d = false;
 bool dd = false;
-
+std::mutex _mu_stack_begin;
+std::mutex _mu_stack_end;
+std::condition_variable _cv_stack1;
+std::condition_variable _cv_stack2;
 //========================================================
 void clearS(std::vector<std::vector<sq>>& squares) {
-	while (true) {
-		{
-			std::unique_lock<std::mutex> l(mu);
-			cv.wait(l);
+	//while (true) {
+	///	{
+	//		std::unique_lock<std::mutex> l(mu);
+	//		cv.wait(l);
 			for (int i = 0; i < squares.size(); i++)
 				for (int j = 0; j < squares.size(); j++)
 					squares[i][j]->_visited = false;
-		}
-	}
+	//	}
+	//}
 }
 
 //-----------------------------------------------
 void Game::move(float speed) {
 	sf::Vector2u ss{ unsigned(m_me->getCenter().x) % SQUARE ,unsigned(m_me->getCenter().y) % SQUARE };
 	sf::Vector2u s{ unsigned((m_me->getCenter().x + float(ss.x)) / SQUARE) ,unsigned((m_me->getCenter().y + float(ss.y)) / SQUARE) };
-	static std::thread th(clearS, m_squares);
+	//static std::thread th(clearS, m_squares);
 	//static std::thread th;
 	static std::stack<sq> dir;
 	if (dir.empty()) {
 		{
-		//	clearS(m_squares);
-			std::lock_guard<std::mutex> l(mu);
+			clearS(m_squares);
+			//std::lock_guard<std::mutex> l(mu);
 			dir = bfs(m_squares[s.x][s.y]);
 			if (dir.empty())
 				return;
@@ -200,11 +203,11 @@ void Game::move(float speed) {
 //=====================================================================
 void Game::checkDir(std::stack<sq>& stack, const sq& squ) {
 	std::cout << "start th\n";
-	//{
+//	{
 	//	std::unique_lock<std::mutex> start(_mu_stack_begin);
-	//	_cv_stack.wait(start);
-	//}
-	while (!dd);
+	//	_cv_stack1.wait(start);
+//	}
+//	while (!dd);
 	std::cout << "end th\n";
 
 	std::queue<sq> curr;//the current nodes that are taken care of
@@ -222,9 +225,9 @@ void Game::checkDir(std::stack<sq>& stack, const sq& squ) {
 				if (!stack.empty())return;
 				tempC->findParent(squ, std::ref(stack));
 				stack.push(std::ref(tempC));
-				d = true;
+			//	d = true;
 			}
-			//_cv_stack.notify_one();
+			_cv_stack2.notify_all();
 			return;
 		}
 		if (tempC->_down->update(tempC, (*this)))curr.push(std::ref(tempC->_down));
@@ -232,7 +235,7 @@ void Game::checkDir(std::stack<sq>& stack, const sq& squ) {
 		if (tempC->_up->update(tempC, (*this)))curr.push(std::ref(tempC->_up));
 		if (tempC->_left->update(tempC, (*this)))curr.push(std::ref(tempC->_left));
 		curr.pop();
-		if (!dd)return;
+		//if (!dd)return;
 	}
 }
 
@@ -243,21 +246,21 @@ std::stack<sq> Game::bfs(sq square) {
 	std::stack<sq> stack;
 	std::vector<sq> goTo{ square->_down , square->_right,square->_up,square->_left };
 	std::vector<std::thread> threads;
-	//{
-		//std::lock_guard<std::mutex> start(_mu_stack_begin);
-		dd = false;
+	{
+		std::lock_guard<std::mutex> start(_mu_stack_begin);
+		//dd = false;
 		for (auto& th : goTo)
 			threads.push_back(makeThread(std::ref(stack), th));
 	//	Sleep(1);
-	//}
-	dd = true;
-	//_cv_stack.notify_all();
-	while (!d);
-	dd = false;
+	}
+	//dd = true;
+	_cv_stack1.notify_all();
+	//while (!d);
+	//dd = false;
 
-	d = false;
-	//std::unique_lock<std::mutex> end(_mu_stack_end);
-	//_cv_stack.wait(end);
+	//d = false;
+	std::unique_lock<std::mutex> end(_mu_stack_end);
+	_cv_stack2.wait(end);
 	for (auto th = threads.begin(); th != threads.end();++th)
 		th->join();
 		//th = threads.erase(th);

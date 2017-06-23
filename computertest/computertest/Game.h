@@ -49,9 +49,8 @@ private:
 	void Game::checkDir(std::stack<sq>& curr, const sq&);
 	std::thread makeThread(std::stack<sq>& curr, const sq& squ) { return std::thread([&] {checkDir(std::ref(curr),squ); }); }
 	//void Game::checkDir();
-	std::mutex _mu_stack_begin;
-	std::mutex _mu_stack_end;
-	std::condition_variable _cv_stack;
+	
+
 };
 //--------------------------------------------------------------------------
 template <typename T>
