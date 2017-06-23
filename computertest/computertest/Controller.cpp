@@ -81,4 +81,5 @@ void Controller::play(sf::RenderWindow& window) {
 	sf::View view(sf::FloatRect{ 0, 0, float(SCREEN_WIDTH),float(SCREEN_HEIGHT) });
 	Game game{ m_images, m_fonts,sf::Uint32(rand()%11)  ,view,"computer"  };
 	auto score = game.play(window, m_images, m_fonts); //run current level
+	Sleep(1000);
 }

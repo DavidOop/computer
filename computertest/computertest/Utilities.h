@@ -76,7 +76,7 @@ class TimeClass
 public:
 	inline static TimeClass& instance() { static TimeClass tone; return tone; }
 	~TimeClass() {}
-
+	float getTime() { return m_clock.getElapsedTime().asSeconds(); }
 	inline float RestartClock() { return m_clock.restart().asSeconds(); }
 private:
 	TimeClass() = default;

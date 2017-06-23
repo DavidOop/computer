@@ -34,10 +34,10 @@ void Game::receive(const Images &images, const Fonts &fonts)
 	m_socket.setBlocking(true);//**********************************
 	Sleep(100);//*********************************
 
-	auto status = m_socket.receive(packet);
+	//auto status = ;
 
-	if (status == sf::TcpSocket::Done)
-	{
+	while (m_socket.receive(packet) != sf::TcpSocket::Done);
+	//{
 		while (!packet.endOfPacket())//קליטה של כל הדברים שעל הלוח
 		{
 			packet >> temp;
@@ -49,15 +49,15 @@ void Game::receive(const Images &images, const Fonts &fonts)
 			{
 				sf::String s;
 				packet >> radius >> image >> s;
-				m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[image], fonts[SETTINGS], radius, temp.second));
+				m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[7], fonts[SETTINGS], radius, temp.second));
 			}
 		}
-	}
+	//}
 
 	m_players.erase(temp.first); //הורדת העיגול שלי מהשחקנים האחרים
-
+	std::cout << "position: "<<temp.second.x << " " << temp.second.y << '\n';
 	m_me->setId(temp.first);//עדכון העיגול שלי
-	m_me->setTexture(images[image]);
+	m_me->setTexture(images[5]);
 	m_me->setPosition(temp.second);
 	m_me->setCenter(temp.second + Vector2f{ NEW_PLAYER,NEW_PLAYER });
 }
@@ -132,35 +132,54 @@ void Game::updateMove(float speed)
 void Game::move(float speed) {
 	sf::Vector2u ss{ unsigned(m_me->getCenter().x) % SQUARE ,unsigned(m_me->getCenter().y) % SQUARE };
 	sf::Vector2u s{ unsigned((m_me->getCenter().x + float(ss.x)) / SQUARE) ,unsigned((m_me->getCenter().y + float(ss.y)) / SQUARE) };
-
-	static std::stack<sq> dir;
+	std::cout <<"s:	"<< s.x << " " << s.y << '\n';
+	//static std::stack<sq> dir;
 	if (dir.empty()) {
-	/*	for (int i = 0; i < 600; i++)
+	/*for (int i = 0; i < 600; i++)
 			for (int j = 0; j < 600; j++)
 				m_squares[i][j]->_visited = false;*/
 
 		dir = bfs(m_squares[s.x][s.y]);
-		if (dir.empty())
+		if (dir.empty()) {
+			std::cout << "empty\n";
 			return;
+		}
 		speed = TimeClass::instance().RestartClock();
 	}
 	speed = TimeClass::instance().RestartClock();
 
 	auto d = dir.top();
-	dir.pop();
+	std::cout << "d: "<< d->_ver.x / SQUARE << " " << d->_ver.y / SQUARE << '\n';
 	if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x > m_squares[s.x][s.y]->_ver.x) {
 		m_me->move(MOVE*speed, 0);
+		sf::Vector2u ss{ unsigned(m_me->getCenter().x) % SQUARE ,unsigned(m_me->getCenter().y) % SQUARE };
+		sf::Vector2u w{ unsigned((m_me->getCenter().x + float(ss.x)) / SQUARE) ,unsigned((m_me->getCenter().y + float(ss.y)) / SQUARE) };
+		if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x <= m_squares[w.x][w.y]->_ver.x)
+			dir.pop();
 	}
 	else if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x < m_squares[s.x][s.y]->_ver.x) {
 		m_me->move(-MOVE*speed, 0);
+		sf::Vector2u ss{ unsigned(m_me->getCenter().x) % SQUARE ,unsigned(m_me->getCenter().y) % SQUARE };
+		sf::Vector2u w{ unsigned((m_me->getCenter().x + float(ss.x)) / SQUARE) ,unsigned((m_me->getCenter().y + float(ss.y)) / SQUARE) };
+		if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.x >= m_squares[w.x][w.y]->_ver.x)
+			dir.pop();
 	}
 	else  if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y < m_squares[s.x][s.y]->_ver.y) {
 		m_me->move(0, -MOVE*speed);
+		sf::Vector2u ss{ unsigned(m_me->getCenter().x) % SQUARE ,unsigned(m_me->getCenter().y) % SQUARE };
+		sf::Vector2u w{ unsigned((m_me->getCenter().x + float(ss.x)) / SQUARE) ,unsigned((m_me->getCenter().y + float(ss.y)) / SQUARE) };
+		if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y >= m_squares[w.x][w.y]->_ver.y)
+			dir.pop();
 	}
-	else if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y > m_squares[s.x][s.y]->_ver.y) {
+	else if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y >= m_squares[s.x][s.y]->_ver.y) {
 		m_me->move(0, MOVE*speed);
+		sf::Vector2u ss{ unsigned(m_me->getCenter().x) % SQUARE ,unsigned(m_me->getCenter().y) % SQUARE };
+		sf::Vector2u w{ unsigned((m_me->getCenter().x + float(ss.x)) / SQUARE) ,unsigned((m_me->getCenter().y + float(ss.y)) / SQUARE) };
+		if (m_squares[d->_ver.x / SQUARE][d->_ver.y / SQUARE]->_ver.y <= m_squares[w.x][w.y]->_ver.y)
+			dir.pop();
 	}
-
+	else { dir.pop(); m_me->move(-float(SQUARE), SQUARE); }
+	std::cout << "end looop\n";
 
 
 }
@@ -172,6 +191,7 @@ std::stack<sq> Game::bfs(sq square) {
 	square->_parent = nullptr;
 	std::set<sf::Uint32> intersection;
 	std::stack<sq> a;
+	a.push(square);
 	std::vector<sq> cl;
 	cl.push_back(square);
 	while (!curr.empty()) {
@@ -182,7 +202,8 @@ std::stack<sq> Game::bfs(sq square) {
 				(*it)->_visited = false;
 			return tempC->findParent(square);
 		}
-		if (tempC->_down->update(tempC, (*this))) { curr.push(std::ref(tempC->_down)); cl.push_back(tempC->_down); }
+		if (tempC->_down->update(tempC, (*this))) { 
+			curr.push(std::ref(tempC->_down)); cl.push_back(tempC->_down); }
 		if (tempC->_right->update(tempC, (*this))) {
 			curr.push(std::ref(tempC->_right)); cl.push_back(tempC->_right);
 		}
@@ -197,12 +218,14 @@ std::stack<sq> Game::bfs(sq square) {
 }
 //==============================================================
 std::stack<sq> Square::findParent(const sq& root) {
-	std::stack<sq> stack;
+	std::stack<sq> stack;	
 	_visited = false;
 	while (_parent && _parent != root) {
 		stack.push(std::ref(_parent));
 		_parent = _parent->_parent;
 	}
+	if(stack.empty())
+		stack.push(root);
 	return stack;
 }
 //======================================================
@@ -223,10 +246,10 @@ bool Square::update(sq& parent, const Game& game) {
 
 //=================================================================
 bool Square::collide(Circle* c, float r)const {
-	return (distance(c->getPosition(), _ver - sf::Vector2f{ r,r }) < c->getRadius() + r
-		|| distance(c->getPosition(), _ver + sf::Vector2f{ -r,float(SQUARE) - r }) < c->getRadius() + r
-		|| distance(c->getPosition(), _ver + sf::Vector2f{ float(SQUARE) - r,-r }) < c->getRadius() + r
-		|| distance(c->getPosition(), _ver + sf::Vector2f{ float(SQUARE) - r,float(SQUARE) - r }) < c->getRadius()) + r;
+	return (distance(c->getPosition(), _ver /*- sf::Vector2f{ r,r }*/) < c->getRadius() + r
+		|| distance(c->getPosition(), _ver + sf::Vector2f{ 0,float(SQUARE) }) < c->getRadius() + r
+		|| distance(c->getPosition(), _ver + sf::Vector2f{ float(SQUARE) - r,0}) < c->getRadius() + r
+		|| distance(c->getPosition(), _ver + sf::Vector2f{ float(SQUARE) ,float(SQUARE) }) < c->getRadius() + r);
 
 }
 //====================================================================================
@@ -263,7 +286,8 @@ void Game::receiveChanges(const Images &images, const Fonts &fonts)
 				addPlayer(temp, packet, images, fonts);
 		}
 	}
-
+	if(TimeClass::instance().getTime() >= 0.5f)
+		m_receive = true;
 	deleteDeadPlayer(m_players);
 }
 //------------------------------------------------------------------------------------
@@ -272,7 +296,7 @@ void Game::addPlayer(const std::pair<Uint32, sf::Vector2f> &temp, sf::Packet &pa
 	Uint32 image;
 	sf::String s;
 	packet >> image >> s;
-	m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[image], fonts[SETTINGS], NEW_PLAYER, temp.second));
+	m_players.emplace(temp.first, std::make_unique<OtherPlayers>(temp.first, images[7], fonts[SETTINGS], NEW_PLAYER, temp.second));
 }
 //------------------------------------------------------------------------------------
 void deleteDeadPlayer(std::unordered_map<Uint32, std::unique_ptr<OtherPlayers>>& players)

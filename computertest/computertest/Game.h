@@ -42,6 +42,7 @@ private:
 	void setSquare();
 	std::vector<std::vector<sq>> m_squares;
 	std::stack<sq> bfs(sq square);
+	std::stack<sq> dir;
 };
 //--------------------------------------------------------------------------
 template <typename T>
